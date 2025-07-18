@@ -1,5 +1,28 @@
-notes
-- Save 10 years of stats?
+# To do
+- [x] test method that grows a town
+- [x] find out how to see logs to see what the code is doing
+- [x] create a way to track ticks
+- [ ] test the methods that increase a factories production
+- [ ] test the methods that track cargo from station to station
+	- I can't see a method that looks at cargo delivered last month, only waiting and planned
+    - station ratings look like they have this data, but can't find a method to access it
+- [ ] when demand is met
+	- [ ] grow town
+	- [ ] boost production of suppliers
+- [ ] when there is excess supplied, boost growth a bit more
+- [ ] reset town ratings each month
+- [ ] track some stats
+  - [ ] display stats
+- [ ] internationalization
+
+## Improvements
+- [ ] optimize script so it doesn't just run every day
+  - [ ] just run less frequently
+  - [ ] use game date to set the next date that something should happen
+
+
+# Notes & Ideas
+- Save x years of stats?
 - most profitable vehicle, break down by plane, ship etc
 - account for a ratio, running cost over revenue (revenue not possible)
 - have absolute stats and proportional stats.
@@ -15,9 +38,20 @@ notes
 - Aim to capture all changes to things as stats, city & industry growth, delivery route stats including stations & vehicles,
 
 https://docs.openttd.org/gs-api/globals
+https://docs.openttd.org/gs-api/classGSDate
+
 this list gives pretty good hints as to what types exist
 
 https://docs.openttd.org/gs-api/classGSTown
+
+tested so far, upgrades or builds 100 houses in all towns, even if the game is paused
+```squirrel
+local allTowns = GSTownList();
+foreach (townId, _ in allTowns) {
+	GSTown.ExpandTown(townId, 100)
+}
+```
+
 // since towns will grow a lot it, resetting the ratings to neutral will help with demolishing buildings, roads and bridges that are in the way
 static bool GSTown::ChangeRating(TownID town_id, GSCompany::CompanyID company_id, int delta)
 
@@ -97,3 +131,9 @@ https://docs.openttd.org/gs-api/classGSVehicle
 static Money 	GetRunningCost (VehicleID vehicle_id)
 static Money 	GetProfitThisYear (VehicleID vehicle_id)
 static Money 	GetProfitLastYear (VehicleID vehicle_id)
+
+https://docs.openttd.org/gs-api/classGSStoryPage
+
+https://docs.openttd.org/gs-api/classGSLog
+
+https://docs.openttd.org/gs-api/annotated
