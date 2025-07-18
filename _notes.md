@@ -38,7 +38,10 @@
 - Aim to capture all changes to things as stats, city & industry growth, delivery route stats including stations & vehicles,
 
 https://docs.openttd.org/gs-api/globals
+
 https://docs.openttd.org/gs-api/classGSDate
+
+refer to this for tick info https://github.com/OpenTTD/OpenTTD/blob/0d599e155f335e922ad2be738a3ab73d1dea346b/src/date_type.h#L34
 
 this list gives pretty good hints as to what types exist
 
@@ -137,3 +140,6 @@ https://docs.openttd.org/gs-api/classGSStoryPage
 https://docs.openttd.org/gs-api/classGSLog
 
 https://docs.openttd.org/gs-api/annotated
+
+https://docs.openttd.org/gs-api/classGSNews
+it's possible to create news
