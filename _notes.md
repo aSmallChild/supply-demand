@@ -244,3 +244,13 @@ Plan C
 - find all industries with a station around it
 - find the stations where that industry is in its catchment area
 - trace the cargo routes (pick a direction) to find links between industries & towns
+- build a list of sources, build a list of destinations, marry them up
+- looks like this has to be done with vehicles
+- for each vehicle from a delivery station
+- check if it carries the cargo
+- get order count, iterate over these order positions https://docs.openttd.org/gs-api/classGSOrder
+- get the tile of the destination of each order
+- load the station at that tile (if it is a station and not a waypoint)
+- check the order flags to see if there is an unload or transfer
+- for unload check if it is the final destination in which case track deliveries and link to source
+- for transfer, rinse and repeat from that station
