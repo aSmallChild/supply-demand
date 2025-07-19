@@ -7,12 +7,10 @@ class SupplyDemand extends GSController {
 function SupplyDemand::Start() {
     local lastRunDate = GSDate.GetCurrentDate(); // todo save & load this from game state
     GSLog.Info("Script started, game date: " + formatDate(lastRunDate));
-    GSLog.Info("Cargo types:");
-    local cargoTypes = getCargoTypes();
-    foreach (cargoType in cargoTypes) {
-        local label = GSCargo.GetCargoLabel(cargoType);
-        GSLog.Info(cargoType + " - " + GSCargo.GetCargoLabel(cargoType) + " - " + GSCargo.GetName(cargoType));
-    }
+    local cargoTypes = GSCargoList();
+//    foreach (cargoType, _ in cargoTypes) {
+//        GSLog.Info(cargoType + " - " + GSCargo.GetCargoLabel(cargoType) + " - " + GSCargo.GetName(cargoType));
+//    }
 
     local nextRunDate = getStartOfNextMonth(lastRunDate);
     while (true) {
@@ -23,13 +21,71 @@ function SupplyDemand::Start() {
 
         local currentDate = GSDate.GetCurrentDate();
         if (nextRunDate > currentDate) {
+            // todo log and error if it's more than a month behind the games current date
             continue;
         }
         lastRunDate = nextRunDate;
         nextRunDate = getStartOfNextMonth(nextRunDate);
+        GSLog.Info(" ### ");
         GSLog.Info("Running for month: " + formatDate(lastRunDate));
+        GSLog.Info(" ### ");
+
+        local towns = GSTownList();
+        foreach (townId, _ in towns) {
+//            local received = GSTown.GetLastMonthReceived(townId, GSCargo::TownEffect towneffect_id)
+            foreach (cargoType, _ in cargoTypes) {
+                local supplied = GSTown.GetLastMonthSupplied(townId, cargoType);
+                if (supplied < 1) {
+                    continue;
+                }
+                local production = GSTown.GetLastMonthProduction(townId, cargoType);
+                if (production) {
+                    local townName = GSTown.GetName(townId);
+                    local cargoName = GSCargo.GetName(cargoType);
+                    GSLog.Info(townName + " produced " + production + " " + cargoName)
+                }
+                if (supplied) {
+                    local townName = GSTown.GetName(townId);
+                    local cargoName = GSCargo.GetName(cargoType);
+                    GSLog.Info(townName + " supplied " + supplied + " " + cargoName)
+                }
+
+            }
+        }
+
+        local industries = GSIndustryList();
+        foreach (industryId, _ in industries) {
+            foreach (cargoType, _ in cargoTypes) {
+                local transported = GSIndustry.GetLastMonthTransported(industryId, cargoType);
+                if (transported < 1) {
+                    continue;
+                }
+                local production = GSIndustry.GetLastMonthProduction(industryId, cargoType);
+                local transportedPercentage = GSIndustry.GetLastMonthTransportedPercentage(industryId, cargoType);
+                if (production > 0) {
+                    local industryName = GSIndustry.GetName(industryId);
+                    local cargoName = GSCargo.GetName(cargoType);
+                    GSLog.Info(industryName + " produced " + production + " " + cargoName)
+                }
+                if (transported > 0) {
+                    local industryName = GSIndustry.GetName(industryId);
+                    local cargoName = GSCargo.GetName(cargoType);
+                    GSLog.Info(industryName + " transported " + transported + " " + cargoName)
+                }
+                if (transportedPercentage) {
+                    local industryName = GSIndustry.GetName(industryId);
+                    local cargoName = GSCargo.GetName(cargoType);
+                    GSLog.Info(industryName + " transportedPercentage " + transportedPercentage + " " + cargoName)
+                }
+            }
+        }
     }
 }
+
+//GSCargoMonitor.GetTownDeliveryAmount(companyId, cargoType, townId, true)
+//GSCargoMonitor.GetIndustryDeliveryAmount(companyId, cargoType, industryId, true)
+//GSCargoMonitor.GetTownPickupAmount(companyId, cargoType, townId, true)
+//GSCargoMonitor.GetIndustryPickupAmount(companyId, cargoType, industryId, true)
 
 function formatDate(date) {
     local month = GSDate.GetMonth(date);
@@ -45,14 +101,4 @@ function getStartOfNextMonth(date) {
         year++;
     }
     return GSDate.GetDate(year, month, 1);
-}
-
-function getCargoTypes() {
-    local list = [];
-    for (local cargoType = 0; cargoType < 64; cargoType++) {
-        if (GSCargo.IsValidCargo(cargoType)) {
-            list.append(cargoType);
-        }
-    }
-    return list;
 }

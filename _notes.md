@@ -16,9 +16,52 @@
 - [ ] internationalization
 
 ## Improvements
-- [ ] optimize script so it doesn't just run every day
-  - [ ] just run less frequently
-  - [ ] use game date to set the next date that something should happen
+- [x] optimize script so it doesn't just run every day
+- [ ] optimize monitoring for cargo, keep a track of monitored industries and 
+e.g. 
+```squirrel
+function MakeTripletKey(cid, ct, tid) {
+    return cid + ":" + ct + ":" + tid;
+}
+
+function BuildTripletSet(triplets) {
+    local set = {};
+    foreach (t in triplets) {
+        local key = MakeTripletKey(t.companyId, t.cargoType, t.townId);
+        set[key] <- true;
+    }
+    return set;
+}
+
+function FindMissingEntries(oldSet, newSet) {
+    local missing = [];
+    foreach (key, _ in oldSet) {
+        if (!(key in newSet)) missing.append(key);
+    }
+    return missing;
+}
+
+// Example data
+local oldMap = [
+    { companyId = 1, cargoType = 0, townId = 100 },
+    { companyId = 1, cargoType = 1, townId = 101 },
+    { companyId = 2, cargoType = 2, townId = 102 },
+];
+
+local newMap = [
+    { companyId = 1, cargoType = 1, townId = 101 }, // same
+    { companyId = 2, cargoType = 2, townId = 102 }, // same
+];
+
+local oldSet = BuildTripletSet(oldMap);
+local newSet = BuildTripletSet(newMap);
+local missing = FindMissingEntries(oldSet, newSet);
+
+// Output missing triplets
+foreach (key in missing) {
+    GSLog.Info("Missing: " + key);
+}
+```
 
 
 # Notes & Ideas
@@ -132,7 +175,8 @@ Using a GSCargoList
 ```squirrel
 // I don't know how to use the list, this doesn't get past item 0
 // so many issues with this list, using plain arrays instead unless the list can be gerated by game
-// the list seems to start with tem items in it which suggests it might ahve the cargo types without needing themto be manually set
+// the list seems to start with ten items in it which suggests it might have the cargo types without needing themto be manually set
+// setting the item values rather than adding them results in a list of 11 items somehow
 function getCargoTypes() {
     local list = GSCargoList();
     local index = 0
