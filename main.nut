@@ -55,28 +55,37 @@ function SupplyDemand::Start() {
 
         local industries = GSIndustryList();
         foreach (industryId, _ in industries) {
+            local stations = getIndustryStations(industryId);
+            if (stations.len() < 1) {
+                continue;
+            }
+
+            local industryName = GSIndustry.GetName(industryId);
+            local hasTransported = false;
             foreach (cargoType, _ in cargoTypes) {
                 local transported = GSIndustry.GetLastMonthTransported(industryId, cargoType);
                 if (transported < 1) {
                     continue;
                 }
+                hasTransported = true;
                 local production = GSIndustry.GetLastMonthProduction(industryId, cargoType);
                 local transportedPercentage = GSIndustry.GetLastMonthTransportedPercentage(industryId, cargoType);
+                local cargoName = GSCargo.GetName(cargoType);
                 if (production > 0) {
-                    local industryName = GSIndustry.GetName(industryId);
-                    local cargoName = GSCargo.GetName(cargoType);
                     GSLog.Info(industryName + " produced " + production + " " + cargoName)
                 }
                 if (transported > 0) {
-                    local industryName = GSIndustry.GetName(industryId);
-                    local cargoName = GSCargo.GetName(cargoType);
-                    GSLog.Info(industryName + " transported " + transported + " " + cargoName)
+                    GSLog.Info(industryName + " transported " + transported + "(" + transportedPercentage + "%) " + cargoName)
                 }
-                if (transportedPercentage) {
-                    local industryName = GSIndustry.GetName(industryId);
-                    local cargoName = GSCargo.GetName(cargoType);
-                    GSLog.Info(industryName + " transportedPercentage " + transportedPercentage + " " + cargoName)
-                }
+            }
+
+            if (!hasTransported) {
+                continue;
+            }
+
+            GSLog.Info(industryName + " has " + stations.len() + " stations that could be delivering this cargo")
+            foreach (i, stationId in stations) {
+                GSLog.Info("station " + i + " - " + GSStation.GetName(stationId))
             }
         }
     }
@@ -101,4 +110,43 @@ function getStartOfNextMonth(date) {
         year++;
     }
     return GSDate.GetDate(year, month, 1);
+}
+
+function getIndustryStations(industryId) {
+    local stationCount = GSIndustry.GetAmountOfStationsAround(industryId);
+    if (stationCount < 1) {
+        return [];
+    }
+
+    local industryTile = GSIndustry.GetLocation(industryId);
+    local stations = GSStationList(GSStation.STATION_ANY);
+    local stationDistances = [];
+    foreach (stationId, _ in stations) {
+        local distance = GSStation.GetDistanceManhattanToTile(stationId, industryTile);
+        stationDistances.append({
+            id = stationId,
+            distance = distance
+        });
+    }
+
+    stationDistances.sort(function(a, b) {
+        if (a.distance > b.distance) return 1;
+        if (a.distance < b.distance) return -1;
+        return 0;
+    });
+
+    local sortedList = [];
+    foreach (entry in stationDistances) {
+        local coverageTiles = GSTileList_StationCoverage(entry.id);
+        foreach (tile, _ in coverageTiles) {
+            if (GSIndustry.GetIndustryID(tile) == industryId) {
+                sortedList.append(entry.id);
+                if (sortedList.len() >= stationCount) {
+                    return sortedList;
+                }
+                break;
+            }
+        }
+    }
+    return sortedList;
 }

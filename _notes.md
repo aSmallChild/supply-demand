@@ -237,3 +237,10 @@ Plan B
   - static TownID GSStation.GetNearestTown(StationID station_id)
   - does it count as being delivered to a town if it is a power station or oil refinery?
 - trace it back to an industry
+
+Plan C
+- GSCargoMonitor is the only thing that seems to be able to count how much was delivered
+- I don't expect it to exactly match production due to these figures being run at different times, and even if they're run at the same time, cargo isn't transported instantly
+- find all industries with a station around it
+- find the stations where that industry is in its catchment area
+- trace the cargo routes (pick a direction) to find links between industries & towns
