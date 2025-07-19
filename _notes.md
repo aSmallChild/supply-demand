@@ -93,7 +93,11 @@ static int 	GetLastMonthTransported (IndustryID industry_id, CargoType cargo_typ
  	Get the total amount of cargo transported from an industry last economy-month.
  
 static int 	GetLastMonthTransportedPercentage (IndustryID industry_id, CargoType cargo_type)
- 	Get the percentage of cargo transported from an industry last economy-month. 
+ 	Get the percentage of cargo transported from an industry last economy-month.
+
+https://docs.openttd.org/gs-api/classGSBaseStation
+
+static TileIndex 	GetLocation (StationID station_id)
 
 https://docs.openttd.org/gs-api/classGSStation
 
@@ -124,6 +128,30 @@ static int 	GetCargoPlannedFromVia (StationID station_id, StationID from_station
 
 https://docs.openttd.org/gs-api/classGSCargo
 
+Using a GSCargoList
+```squirrel
+// I don't know how to use the list, this doesn't get past item 0
+// so many issues with this list, using plain arrays instead unless the list can be gerated by game
+// the list seems to start with tem items in it which suggests it might ahve the cargo types without needing themto be manually set
+function getCargoTypes() {
+    local list = GSCargoList();
+    local index = 0
+    for (local cargoType = 0; cargoType < 64; cargoType++) {
+        if (GSCargo.IsValidCargo(cargoType)) {
+            GSLog.Info("adding to index " + index + " id " + cargoType)
+            list.SetValue(index++, cargoType);
+        }
+    }
+    return list;
+}
+local cargoTypes = getCargoTypes();
+for (local i = 0; i < cargoTypes.Count(); i++) {
+	local cargoType = cargoTypes.GetValue(i);
+	local label = GSCargo.GetCargoLabel(cargoType);
+	GSLog.Info("CargoType " + cargoType + ":" + label);
+}
+```
+
 https://docs.openttd.org/gs-api/classGSGame
 static bool 	IsPaused ()
 // bingo
@@ -143,3 +171,25 @@ https://docs.openttd.org/gs-api/annotated
 
 https://docs.openttd.org/gs-api/classGSNews
 it's possible to create news
+
+
+
+# towns need to be linked to raw industries by stations
+# this needs to ignore player, e.g. it doesn't matter which or how many companies delivered the cargo from step to step
+
+plan A (don't like plan A, maybe working in reverse is better. Just cause something is picked up doesn't mean it is delivered)
+- for every industry producing something, or which cargo is being shipped from
+  - find the number of stations around it
+  - get the location of the industry
+  - somehow search for stations (could be just get a list of stations receiving that type of cargo produced by that industry)
+
+Plan B
+- for every industry producing something
+- get the cargo types into a list
+- for every cargo type see if there is a town receiving it
+- for every town receiving cargo (assuming it counts things like coal and oil which arent technically delivered to the town but a surrounding industry)
+- find the station where it was delivered to 
+- find which town/local authority it is linked to
+  - static TownID GSStation.GetNearestTown(StationID station_id)
+  - does it count as being delivered to a town if it is a power station or oil refinery?
+- trace it back to an industry

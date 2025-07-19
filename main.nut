@@ -1,3 +1,4 @@
+local MAX_CARGOTYPES = 64;
 class SupplyDemand extends GSController {
     constructor() {
     }
@@ -6,6 +7,13 @@ class SupplyDemand extends GSController {
 function SupplyDemand::Start() {
     local lastRunDate = GSDate.GetCurrentDate(); // todo save & load this from game state
     GSLog.Info("Script started, game date: " + formatDate(lastRunDate));
+    GSLog.Info("Cargo types:");
+    local cargoTypes = getCargoTypes();
+    foreach (cargoType in cargoTypes) {
+        local label = GSCargo.GetCargoLabel(cargoType);
+        GSLog.Info(cargoType + " - " + GSCargo.GetCargoLabel(cargoType) + " - " + GSCargo.GetName(cargoType));
+    }
+
     local nextRunDate = getStartOfNextMonth(lastRunDate);
     while (true) {
         this.Sleep(74 * 3) // 3 days
@@ -37,4 +45,14 @@ function getStartOfNextMonth(date) {
         year++;
     }
     return GSDate.GetDate(year, month, 1);
+}
+
+function getCargoTypes() {
+    local list = [];
+    for (local cargoType = 0; cargoType < 64; cargoType++) {
+        if (GSCargo.IsValidCargo(cargoType)) {
+            list.append(cargoType);
+        }
+    }
+    return list;
 }
