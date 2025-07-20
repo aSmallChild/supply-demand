@@ -30,30 +30,31 @@ function SupplyDemand::Start() {
         GSLog.Info("Running for month: " + formatDate(lastRunDate));
         GSLog.Info(" ### ");
 
-        local towns = GSTownList();
-        foreach (townId, _ in towns) {
-//            local received = GSTown.GetLastMonthReceived(townId, GSCargo::TownEffect towneffect_id)
-            foreach (cargoType, _ in cargoTypes) {
-                local supplied = GSTown.GetLastMonthSupplied(townId, cargoType);
-                if (supplied < 1) {
-                    continue;
-                }
-                local production = GSTown.GetLastMonthProduction(townId, cargoType);
-                if (production) {
-                    local townName = GSTown.GetName(townId);
-                    local cargoName = GSCargo.GetName(cargoType);
-                    GSLog.Info(townName + " produced " + production + " " + cargoName)
-                }
-                if (supplied) {
-                    local townName = GSTown.GetName(townId);
-                    local cargoName = GSCargo.GetName(cargoType);
-                    GSLog.Info(townName + " supplied " + supplied + " " + cargoName)
-                }
-
-            }
-        }
+//        local towns = GSTownList();
+//        foreach (townId, _ in towns) {
+////            local received = GSTown.GetLastMonthReceived(townId, GSCargo::TownEffect towneffect_id)
+//            foreach (cargoType, _ in cargoTypes) {
+//                local supplied = GSTown.GetLastMonthSupplied(townId, cargoType);
+//                if (supplied < 1) {
+//                    continue;
+//                }
+//                local production = GSTown.GetLastMonthProduction(townId, cargoType);
+////                if (production) {
+////                    local townName = GSTown.GetName(townId);
+////                    local cargoName = GSCargo.GetName(cargoType);
+////                    GSLog.Info(townName + " produced " + production + " " + cargoName)
+////                }
+//                if (supplied) {
+//                    local townName = GSTown.GetName(townId);
+//                    local cargoName = GSCargo.GetName(cargoType);
+//                    GSLog.Info(townName + " supplied " + supplied + " " + cargoName);
+//                }
+//
+//            }
+//        }
 
         local industries = GSIndustryList();
+        local taskQueue = [];
         foreach (industryId, _ in industries) {
             local stations = getIndustryStations(industryId);
             if (stations.len() < 1) {
@@ -61,33 +62,37 @@ function SupplyDemand::Start() {
             }
 
             local industryName = GSIndustry.GetName(industryId);
-            local hasTransported = false;
             foreach (cargoType, _ in cargoTypes) {
                 local transported = GSIndustry.GetLastMonthTransported(industryId, cargoType);
                 if (transported < 1) {
                     continue;
                 }
-                hasTransported = true;
-                local production = GSIndustry.GetLastMonthProduction(industryId, cargoType);
-                local transportedPercentage = GSIndustry.GetLastMonthTransportedPercentage(industryId, cargoType);
-                local cargoName = GSCargo.GetName(cargoType);
-                if (production > 0) {
-                    GSLog.Info(industryName + " produced " + production + " " + cargoName)
-                }
-                if (transported > 0) {
-                    GSLog.Info(industryName + " transported " + transported + "(" + transportedPercentage + "%) " + cargoName)
-                }
-            }
+                local transportedPercent = GSIndustry.GetLastMonthTransportedPercentage(industryId, cargoType);
 
-            if (!hasTransported) {
-                continue;
-            }
-
-            GSLog.Info(industryName + " has " + stations.len() + " stations that could be delivering this cargo")
-            foreach (i, stationId in stations) {
-                GSLog.Info("station " + i + " - " + GSStation.GetName(stationId))
+                foreach (stationId in stations) {
+                    local cargoRating = GSStation.GetCargoRating(stationId, cargoType);
+                    if (cargoRating < 1) {
+                        continue;
+                    }
+                    taskQueue.append({
+                        date = currentDate,
+                        origIndustryId = industryId,
+                        origCargoId = cargoType,
+                        origStationId = stationId,
+                        origCargoRating = cargoRating,
+                        origTownId = GSStation.GetNearestTown(stationId),
+                        transported = transported,
+                        transportedPercent = transportedPercent,
+                        destIndustryId = null,
+                        destStationId = null,
+                        destTownId = null
+                        destCargoId = null
+                    });
+                }
             }
         }
+
+        processTaskQueue(taskQueue);
     }
 }
 
@@ -149,4 +154,46 @@ function getIndustryStations(industryId) {
         }
     }
     return sortedList;
+}
+
+function processTaskQueue(queue) {
+    foreach (task in queue) {
+        processTask(task);
+    }
+}
+
+function processTask(task) {
+    local industryName = GSIndustry.GetName(task.origIndustryId);
+    local cargoName = GSCargo.GetName(task.origCargoId);
+    local stationName = GSStation.GetName(task.origStationId);
+
+    GSLog.Info("On " + formatDate(task.date) + ", " + industryName + " shipped " + task.transported + " " + cargoName + " from " + stationName + " with a rating of " + task.origCargoRating + "%");
+    local vehicles = GSVehicleList_Station(task.origStationId);
+    foreach (vehicleId, _ in vehicles) {
+        if (GSVehicle.GetCapacity(vehicleId, task.origCargoId) < 1) {
+            continue;
+        }
+        local orderCount = GSOrder.GetOrderCount(vehicleId);
+        GSLog.Info(GSVehicle.GetName(vehicleId) + " leaves this station with caries said cargo. It has " + orderCount + " orders");
+        local startOrderPositions = [];
+        for (local i = 0; i < orderCount; i++) {
+            local stationId = GSStation.GetStationID(GSOrder.GetOrderDestination(vehicleId, i));
+            if (stationId == task.origStationId) {
+                // todo check order flags to see if it's picking up cargo
+                startOrderPositions.append(i);
+            }
+        }
+        GSLog.Info("found " + startOrderPositions.len() + " orders which go to this station")
+//        foreach (startPosition in startOrderPositions) {
+//            for (local i = 0; i < orderCount - 1; i++) {
+//                local stationId = GSStation.GetStationID(GSOrder.GetOrderDestination(vehicleId, (i + startPosition + 1) % orderCount));
+//            }
+//        }
+
+
+        // check the order flags to see if there is an unload or transfer
+        // for unload check if it is the final destination in which case track deliveries and link to source
+        // for transfer, rinse and repeat from that station
+        // local otherStations = GSStationList_Vehicle(vehicleId) shouldn't need this
+    }
 }

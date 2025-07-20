@@ -251,6 +251,34 @@ Plan C
 - get order count, iterate over these order positions https://docs.openttd.org/gs-api/classGSOrder
 - get the tile of the destination of each order
 - load the station at that tile (if it is a station and not a waypoint)
+- for every order at this station that picks up, traverse the orders until there is an unload or transfer for that cargo type
+  - multiple orders to pick up from the same station may appear in the order list, they all need to be processed
 - check the order flags to see if there is an unload or transfer
 - for unload check if it is the final destination in which case track deliveries and link to source
 - for transfer, rinse and repeat from that station
+- if unloading at an intermediary, switch cargo types to track 
+
+create a task queue, and gather the following data
+```
+{
+    date,
+    origIndustryId
+    origStationId
+    origCargoId
+    transported
+    transportedPercent
+    destIndustryId?
+    destStationId
+    destTownId
+    destCargoId
+}
+```
+
+- With cargo monitoring, find how much each industry supplied and how much each town received.
+- Use the route data above to which industry supplied each portion.
+  - If multiple industries ship to multiple towns it will be impossible to calculate exactly how much went to each town
+  - It will have to be approximated (see if it's possible to access station ratings)
+- Grow each town based on how much was delivered (regardless of where it was from)
+- If demand at a town was exceeded (come up with some formula for demand, make it configurable) expand the original industries
+  - sort the industries by which supplied the most to the town 
+  - grow the first industry with more than 80% transported
