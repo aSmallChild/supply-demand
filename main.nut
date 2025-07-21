@@ -55,9 +55,12 @@ function SupplyDemand::Start() {
 
         local industries = GSIndustryList();
         local taskQueue = [];
+        GSLog.Info("there are " + industries.Count() + " industries total");
         foreach (industryId, _ in industries) {
+            // todo primary industries only
             local stations = getIndustryStations(industryId);
             if (stations.len() < 1) {
+                industries.SetValue(industryId, -1)
                 continue;
             }
 
@@ -157,12 +160,13 @@ function getIndustryStations(industryId) {
 }
 
 function processTaskQueue(queue) {
+    local industryDeliverySources = {};
     foreach (task in queue) {
-        processTask(task);
+        processTask(task, industryDeliverySources);
     }
 }
 
-function processTask(task) {
+function processTask(task, industryDeliverySources) {
     local industryName = GSIndustry.GetName(task.origIndustryId);
     local cargoName = GSCargo.GetName(task.origCargoId);
     local stationName = GSStation.GetName(task.origStationId);
@@ -181,7 +185,7 @@ function processTask(task) {
                 startOrderPositions.append(i);
             }
         }
-        GSLog.Info(GSVehicle.GetName(vehicleId) + " leaves this station with caries said cargo. It has " + orderCount + " orders" + startOrderPositions.len() + " of which is/are to load at this station");
+        GSLog.Info(GSVehicle.GetName(vehicleId) + " leaves this station with caries said cargo. It has " + orderCount + " orders " + startOrderPositions.len() + " of which is/are to load at this station");
         foreach (startPosition in startOrderPositions) {
             for (local i = 0; i < orderCount - 1; i++) {
                 local orderPosition = (i + startPosition + 1) % orderCount;
@@ -190,14 +194,21 @@ function processTask(task) {
                     continue;
                 }
                 local stationId = GSStation.GetStationID(GSOrder.GetOrderDestination(vehicleId, orderPosition));
-                local cargoAcceptedTile = stationAcceptsCargo(stationId, task.origCargoId);
-                if (cargoAcceptedTile) {
-                    task.destIndustryId = GSIndustry.GetIndustryID(cargoAcceptedTile); // could technically be a town tile
-                    GSLog.Info("This cargo is dropped off and accepted at " + GSStation.GetName(stationId));
+                local acceptingIndustries = stationAcceptsCargo(stationId, task.origCargoId);
+                w// need to know if it is a town that accepts goods
+                if (acceptingIndustries.len()) {
+//                    task.destIndustryId = GSIndustry.GetIndustryID(cargoAcceptedTile);
+                    GSLog.Info("This cargo is unloaded at " + GSStation.GetName(stationId) + " and is accepted by "  + acceptingIndustries.len() + " industrie(s)");
+                    // traverse the cargo chain
+                    // create map of destination industries
+                    // map(industryId -> set(origIndustryId))
                     // todo find industry and or town
+                    local industryId = task.origIndustryId;
+                    local production = GSIndustry.GetProductionLevel(industryId);
+                    local newProduction = production * 2;
+                    GSIndustry.SetProductionLevel(industryId, newProduction);
                 }
             }
-            // need to know if it is a town that accepts goods
         }
 
 
@@ -209,14 +220,28 @@ function processTask(task) {
 }
 
 function stationAcceptsCargo(stationId, cargoId) {
-    // todo I expect this doesn't work correctly for goods
+    local acceptedCargo = GSCargoList_StationAccepting(stationId);
+    local acceptingIndustries = [];
+    if (!acceptedCargo.HasItem(cargoId)) {
+        return acceptingIndustries;
+    }
     local coverageTiles = GSTileList_StationCoverage(stationId);
     foreach (tile, _ in coverageTiles) {
-        if (GSTile.GetCargoAcceptance(tile, cargoId, 1, 1, 1) > 0) {
-            return tile;
+        local industryId = GSIndustry.GetIndustryID(tile);
+        if (!listContains(acceptingIndustries, industryId) && GSIndustry.IsCargoAccepted(industryId, cargoId) == GSIndustry.CAS_ACCEPTED) {
+            acceptingIndustries.append(industryId);
         }
     }
-    return null;
+    return acceptingIndustries;
+}
+
+function listContains(haystack, needle) {
+    foreach (k, v in haystack) {
+        if (v == needle) {
+            return true;
+        }
+    }
+    return false;
 }
 
 function canLoad(orderFlags) {
