@@ -174,21 +174,31 @@ function processTask(task) {
             continue;
         }
         local orderCount = GSOrder.GetOrderCount(vehicleId);
-        GSLog.Info(GSVehicle.GetName(vehicleId) + " leaves this station with caries said cargo. It has " + orderCount + " orders");
         local startOrderPositions = [];
         for (local i = 0; i < orderCount; i++) {
             local stationId = GSStation.GetStationID(GSOrder.GetOrderDestination(vehicleId, i));
-            if (stationId == task.origStationId) {
-                // todo check order flags to see if it's picking up cargo
+            if (stationId == task.origStationId && canLoad(GSOrder.GetOrderFlags(vehicleId, i))) {
                 startOrderPositions.append(i);
             }
         }
-        GSLog.Info("found " + startOrderPositions.len() + " orders which go to this station")
-//        foreach (startPosition in startOrderPositions) {
-//            for (local i = 0; i < orderCount - 1; i++) {
-//                local stationId = GSStation.GetStationID(GSOrder.GetOrderDestination(vehicleId, (i + startPosition + 1) % orderCount));
-//            }
-//        }
+        GSLog.Info(GSVehicle.GetName(vehicleId) + " leaves this station with caries said cargo. It has " + orderCount + " orders" + startOrderPositions.len() + " of which is/are to load at this station");
+        foreach (startPosition in startOrderPositions) {
+            for (local i = 0; i < orderCount - 1; i++) {
+                local orderPosition = (i + startPosition + 1) % orderCount;
+                local orderFlags = GSOrder.GetOrderFlags(vehicleId, i);
+                if (!canUnload(orderFlags)) {
+                    continue;
+                }
+                local stationId = GSStation.GetStationID(GSOrder.GetOrderDestination(vehicleId, orderPosition));
+                local cargoAcceptedTile = stationAcceptsCargo(stationId, task.origCargoId);
+                if (cargoAcceptedTile) {
+                    task.destIndustryId = GSIndustry.GetIndustryID(cargoAcceptedTile); // could technically be a town tile
+                    GSLog.Info("This cargo is dropped off and accepted at " + GSStation.GetName(stationId));
+                    // todo find industry and or town
+                }
+            }
+            // need to know if it is a town that accepts goods
+        }
 
 
         // check the order flags to see if there is an unload or transfer
@@ -196,4 +206,43 @@ function processTask(task) {
         // for transfer, rinse and repeat from that station
         // local otherStations = GSStationList_Vehicle(vehicleId) shouldn't need this
     }
+}
+
+function stationAcceptsCargo(stationId, cargoId) {
+    // todo I expect this doesn't work correctly for goods
+    local coverageTiles = GSTileList_StationCoverage(stationId);
+    foreach (tile, _ in coverageTiles) {
+        if (GSTile.GetCargoAcceptance(tile, cargoId, 1, 1, 1) > 0) {
+            return tile;
+        }
+    }
+    return null;
+}
+
+function canLoad(orderFlags) {
+    if (orderFlags == GSOrder.OF_NONE) {
+        return true;
+    }
+
+    if (orderFlags & (GSOrder.OF_NO_LOAD | GSOrder.OF_NON_STOP_DESTINATION)) {
+        return false;
+    }
+
+    if (orderFlags & (GSOrder.OF_TRANSFER | GSOrder.OF_UNLOAD)) {
+        return false;
+    }
+
+    return true;
+}
+
+function canUnload(orderFlags) {
+    if (orderFlags == GSOrder.OF_NONE) {
+        return true;
+    }
+
+    if (orderFlags & (GSOrder.OF_NO_UNLOAD | GSOrder.OF_NON_STOP_DESTINATION)) {
+        return false;
+    }
+
+    return true;
 }
