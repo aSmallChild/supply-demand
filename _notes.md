@@ -2,8 +2,8 @@
 - [x] test method that grows a town
 - [x] find out how to see logs to see what the code is doing
 - [x] create a way to track ticks
-- [ ] test the methods that increase a factories production
-- [ ] test the methods that track cargo from station to station
+- [x] test the methods that increase a factories production
+- [x] test the methods that track cargo from station to station
 	- I can't see a method that looks at cargo delivered last month, only waiting and planned
     - station ratings look like they have this data, but can't find a method to access it
 - [ ] when demand is met
@@ -17,51 +17,9 @@
 
 ## Improvements
 - [x] optimize script so it doesn't just run every day
-- [ ] optimize monitoring for cargo, keep a track of monitored industries and 
-e.g. 
-```squirrel
-function MakeTripletKey(cid, ct, tid) {
-    return cid + ":" + ct + ":" + tid;
-}
-
-function BuildTripletSet(triplets) {
-    local set = {};
-    foreach (t in triplets) {
-        local key = MakeTripletKey(t.companyId, t.cargoType, t.townId);
-        set[key] <- true;
-    }
-    return set;
-}
-
-function FindMissingEntries(oldSet, newSet) {
-    local missing = [];
-    foreach (key, _ in oldSet) {
-        if (!(key in newSet)) missing.append(key);
-    }
-    return missing;
-}
-
-// Example data
-local oldMap = [
-    { companyId = 1, cargoType = 0, townId = 100 },
-    { companyId = 1, cargoType = 1, townId = 101 },
-    { companyId = 2, cargoType = 2, townId = 102 },
-];
-
-local newMap = [
-    { companyId = 1, cargoType = 1, townId = 101 }, // same
-    { companyId = 2, cargoType = 2, townId = 102 }, // same
-];
-
-local oldSet = BuildTripletSet(oldMap);
-local newSet = BuildTripletSet(newMap);
-local missing = FindMissingEntries(oldSet, newSet);
-
-// Output missing triplets
-foreach (key in missing) {
-    GSLog.Info("Missing: " + key);
-}
-```
+- [ ] optimize monitoring for cargo, keep a track of monitored industries (see triplets in snippets)
+- [ ] figure out how to handle passengers mail and valuables
+- [ ] figure out how to handle food goods and water
 
 
 # Notes & Ideas

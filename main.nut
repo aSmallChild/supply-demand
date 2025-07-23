@@ -1,4 +1,5 @@
-local MAX_CARGOTYPES = 64;
+require("util.nut");
+
 class SupplyDemand extends GSController {
     constructor() {
     }
@@ -7,10 +8,6 @@ class SupplyDemand extends GSController {
 function SupplyDemand::Start() {
     local lastRunDate = GSDate.GetCurrentDate(); // todo save & load this from game state
     GSLog.Info("Script started, game date: " + formatDate(lastRunDate));
-    local cargoTypes = GSCargoList();
-//    foreach (cargoType, _ in cargoTypes) {
-//        GSLog.Info(cargoType + " - " + GSCargo.GetCargoLabel(cargoType) + " - " + GSCargo.GetName(cargoType));
-//    }
 
     local nextRunDate = getStartOfNextMonth(lastRunDate);
     while (true) {
@@ -53,118 +50,31 @@ function SupplyDemand::Start() {
 //            }
 //        }
 
-        local industries = GSIndustryList();
-        local taskQueue = [];
-        GSLog.Info("there are " + industries.Count() + " industries total");
-        foreach (industryId, _ in industries) {
-            // todo primary industries only
-            local stations = getIndustryStations(industryId);
-            if (stations.len() < 1) {
-                industries.SetValue(industryId, -1)
-                continue;
-            }
-
-            local industryName = GSIndustry.GetName(industryId);
-            foreach (cargoType, _ in cargoTypes) {
-                local transported = GSIndustry.GetLastMonthTransported(industryId, cargoType);
-                if (transported < 1) {
-                    continue;
-                }
-                local transportedPercent = GSIndustry.GetLastMonthTransportedPercentage(industryId, cargoType);
-
-                foreach (stationId in stations) {
-                    local cargoRating = GSStation.GetCargoRating(stationId, cargoType);
-                    if (cargoRating < 1) {
-                        continue;
-                    }
-                    taskQueue.append({
-                        date = currentDate,
-                        origIndustryId = industryId,
-                        origCargoId = cargoType,
-                        origStationId = stationId,
-                        origCargoRating = cargoRating,
-                        origTownId = GSStation.GetNearestTown(stationId),
-                        transported = transported,
-                        transportedPercent = transportedPercent,
-                        destIndustryId = null,
-                        destStationId = null,
-                        destTownId = null
-                        destCargoId = null
-                    });
-                }
-            }
-        }
-
-        processTaskQueue(taskQueue);
+        local origins = findOriginIndustries(currentDate);
+//        findDestinations(origins);
     }
+}
+
+function processOrigins(origins) {
+    local processedStations = {};
+    foreach (origin in origins) {
+        local stationCargoKey = origin.stationId + "_" + origin.cargoId;
+        if (stationCargoKey in processedStations) {
+            origin.destinations.extend(processedStations[stationCargoKey]);
+        } else {
+            // todo use stationAcceptingTowns to help find destinations
+            local destinations = findDestinations(origin.stationId, origin.cargoId);
+            processedStations[stationCargoKey] <- destinations;
+            origin.destinations.extend(destinations);
+        }
+    }
+    return origins;
 }
 
 //GSCargoMonitor.GetTownDeliveryAmount(companyId, cargoType, townId, true)
 //GSCargoMonitor.GetIndustryDeliveryAmount(companyId, cargoType, industryId, true)
 //GSCargoMonitor.GetTownPickupAmount(companyId, cargoType, townId, true)
 //GSCargoMonitor.GetIndustryPickupAmount(companyId, cargoType, industryId, true)
-
-function formatDate(date) {
-    local month = GSDate.GetMonth(date);
-    local day = GSDate.GetDayOfMonth(date);
-    return GSDate.GetYear(date) + "-" + (month < 10 ? "0" : "") + month + "-" + (day < 10 ? "0" : "") + day;
-}
-
-function getStartOfNextMonth(date) {
-    local year = GSDate.GetYear(date);
-    local month = GSDate.GetMonth(date) + 1;
-    if (month > 12) {
-        month = 1;
-        year++;
-    }
-    return GSDate.GetDate(year, month, 1);
-}
-
-function getIndustryStations(industryId) {
-    local stationCount = GSIndustry.GetAmountOfStationsAround(industryId);
-    if (stationCount < 1) {
-        return [];
-    }
-
-    local industryTile = GSIndustry.GetLocation(industryId);
-    local stations = GSStationList(GSStation.STATION_ANY);
-    local stationDistances = [];
-    foreach (stationId, _ in stations) {
-        local distance = GSStation.GetDistanceManhattanToTile(stationId, industryTile);
-        stationDistances.append({
-            id = stationId,
-            distance = distance
-        });
-    }
-
-    stationDistances.sort(function(a, b) {
-        if (a.distance > b.distance) return 1;
-        if (a.distance < b.distance) return -1;
-        return 0;
-    });
-
-    local sortedList = [];
-    foreach (entry in stationDistances) {
-        local coverageTiles = GSTileList_StationCoverage(entry.id);
-        foreach (tile, _ in coverageTiles) {
-            if (GSIndustry.GetIndustryID(tile) == industryId) {
-                sortedList.append(entry.id);
-                if (sortedList.len() >= stationCount) {
-                    return sortedList;
-                }
-                break;
-            }
-        }
-    }
-    return sortedList;
-}
-
-function processTaskQueue(queue) {
-    local industryDeliverySources = {};
-    foreach (task in queue) {
-        processTask(task, industryDeliverySources);
-    }
-}
 
 function processTask(task, industryDeliverySources) {
     local industryName = GSIndustry.GetName(task.origIndustryId);
@@ -189,25 +99,18 @@ function processTask(task, industryDeliverySources) {
         foreach (startPosition in startOrderPositions) {
             for (local i = 0; i < orderCount - 1; i++) {
                 local orderPosition = (i + startPosition + 1) % orderCount;
-                local orderFlags = GSOrder.GetOrderFlags(vehicleId, i);
+                local orderFlags = GSOrder.GetOrderFlags(vehicleId, orderPosition);
                 if (!canUnload(orderFlags)) {
                     continue;
                 }
                 local stationId = GSStation.GetStationID(GSOrder.GetOrderDestination(vehicleId, orderPosition));
-                local acceptingIndustries = stationAcceptsCargo(stationId, task.origCargoId);
-                w// need to know if it is a town that accepts goods
-                if (acceptingIndustries.len()) {
-//                    task.destIndustryId = GSIndustry.GetIndustryID(cargoAcceptedTile);
-                    GSLog.Info("This cargo is unloaded at " + GSStation.GetName(stationId) + " and is accepted by "  + acceptingIndustries.len() + " industrie(s)");
-                    // traverse the cargo chain
-                    // create map of destination industries
-                    // map(industryId -> set(origIndustryId))
-                    // todo find industry and or town
-                    local industryId = task.origIndustryId;
-                    local production = GSIndustry.GetProductionLevel(industryId);
-                    local newProduction = production * 2;
-                    GSIndustry.SetProductionLevel(industryId, newProduction);
+                local acceptingTowns = stationAcceptingTowns(stationId, cargoId);
+                if (acceptingTowns.len() < 1) {
+                    continue;
                 }
+
+                // if it is an intermediatry, find the next cargo types
+                // for each industry see if it is the end of a chain
             }
         }
 
@@ -217,57 +120,4 @@ function processTask(task, industryDeliverySources) {
         // for transfer, rinse and repeat from that station
         // local otherStations = GSStationList_Vehicle(vehicleId) shouldn't need this
     }
-}
-
-function stationAcceptsCargo(stationId, cargoId) {
-    local acceptedCargo = GSCargoList_StationAccepting(stationId);
-    local acceptingIndustries = [];
-    if (!acceptedCargo.HasItem(cargoId)) {
-        return acceptingIndustries;
-    }
-    local coverageTiles = GSTileList_StationCoverage(stationId);
-    foreach (tile, _ in coverageTiles) {
-        local industryId = GSIndustry.GetIndustryID(tile);
-        if (!listContains(acceptingIndustries, industryId) && GSIndustry.IsCargoAccepted(industryId, cargoId) == GSIndustry.CAS_ACCEPTED) {
-            acceptingIndustries.append(industryId);
-        }
-    }
-    return acceptingIndustries;
-}
-
-function listContains(haystack, needle) {
-    foreach (k, v in haystack) {
-        if (v == needle) {
-            return true;
-        }
-    }
-    return false;
-}
-
-function canLoad(orderFlags) {
-    if (orderFlags == GSOrder.OF_NONE) {
-        return true;
-    }
-
-    if (orderFlags & (GSOrder.OF_NO_LOAD | GSOrder.OF_NON_STOP_DESTINATION)) {
-        return false;
-    }
-
-    if (orderFlags & (GSOrder.OF_TRANSFER | GSOrder.OF_UNLOAD)) {
-        return false;
-    }
-
-    return true;
-}
-
-function canUnload(orderFlags) {
-    if (orderFlags == GSOrder.OF_NONE) {
-        return true;
-    }
-
-    if (orderFlags & (GSOrder.OF_NO_UNLOAD | GSOrder.OF_NON_STOP_DESTINATION)) {
-        return false;
-    }
-
-    return true;
 }
