@@ -35,6 +35,38 @@ function canUnload(orderFlags) {
     return true;
 }
 
+function isTransfer(orderFlags) {
+    if (orderFlags == GSOrder.OF_NONE) {
+        return false;
+    }
+
+    if (orderFlags & GSOrder.OF_NON_STOP_DESTINATION) {
+        return false;
+    }
+
+    if (orderFlags & GSOrder.OF_TRANSFER) {
+        return true;
+    }
+
+    return false;
+}
+
+function isForceUnload(orderFlags) {
+    if (orderFlags == GSOrder.OF_NONE) {
+        return false;
+    }
+
+    if (orderFlags & GSOrder.OF_NON_STOP_DESTINATION) {
+        return false;
+    }
+
+    if (orderFlags & GSOrder.OF_UNLOAD) {
+        return true;
+    }
+
+    return false;
+}
+
 function formatDate(date) {
     local month = GSDate.GetMonth(date);
     local day = GSDate.GetDayOfMonth(date);
@@ -93,7 +125,7 @@ function getIndustryStations(industryId) {
 /**
  * return the towns that are the final destination for this cargo, or the industries that are intermediarys
  */
-function stationAcceptingTowns(stationId, cargoId) {
+function stationCargoRecipients(stationId, cargoId) {
     if (!GSCargoList_StationAccepting(stationId).HasItem(cargoId)) {
         return null;
     }
@@ -103,44 +135,58 @@ function stationAcceptingTowns(stationId, cargoId) {
         cargoLabel == "WATR" || cargoLabel == "PASS") {
         return {
             townIds = [GSStation.GetNearestTown(stationId)],
-            industryIds = null
+            nextCargoIds = null,
         };
     }
 
     local acceptingTowns = [];
     local acceptingIndustries = [];
-    local producingIndustries = [];
+    local nextCargoIds = [];
     local coverageTiles = GSTileList_StationCoverage(stationId);
     foreach (tile, _ in coverageTiles) {
         local industryId = GSIndustry.GetIndustryID(tile);
-        if (!listContains(acceptingIndustries, industryId) && GSIndustry.IsCargoAccepted(industryId, cargoId) == GSIndustry.CAS_ACCEPTED) {
-            acceptingIndustries.append(industryId);
-            local industryType = GSIndustry.GetIndustryType(industryId);
-            local producedCargos = GSIndustryType.GetProducedCargo(industryType);
-            if (producedCargos.Count() > 0) {
-                producingIndustries.append(industryId);
+        if (listContains(acceptingIndustries, industryId) || GSIndustry.IsCargoAccepted(industryId, cargoId) == GSIndustry.CAS_ACCEPTED) {
+            continue;
+        }
+        acceptingIndustries.append(industryId);
+        local industryType = GSIndustry.GetIndustryType(industryId);
+        if (!GSIndustryType.IsProcessingIndustry(industryType)) {
+            continue;
+        }
+        local producedCargos = GSIndustryType.GetProducedCargo(industryType);
+        if (producedCargos.Count() < 1) {
+            continue
+        }
+        foreach (cargoId, _ in producedCargos) {
+            if (!listContains(nextCargoIds, cargoId)) {
+                nextCargoIds.append(cargoId);
             }
         }
     }
 
-    if (producingIndustries.len() > 0) {
+    if (nextCargoIds.len() > 0) {
         return {
             townIds = null,
-            industryIds = producingIndustries
+            nextCargoIds = nextCargoIds,
         };
     }
 
     foreach (industryId in acceptingIndustries) {
-        local townId = GSIndustry.GetNearestTown(industryId);
+        local tile = GSIndustry.GetLocation(industryId);
+        local townId = GSTile.GetClosestTown(tile);
         if (!listContains(acceptingTowns, townId)) {
             acceptingTowns.append(townId);
         }
     }
 
-    return {
-        townIds = acceptingTowns,
-        industryIds = null
-    };
+    if (acceptingTowns.len() > 0) {
+        return {
+            townIds = acceptingTowns,
+            nextCargoIds = null,
+        };
+    }
+
+    return null;
 }
 
 function findNextUnloadStationInOrders(vehicleId, originStationId, cargoType) {
@@ -228,4 +274,12 @@ function findOriginIndustries(currentDate) {
     }
 
     return origins;
+}
+
+function addTask(taskQueue, origin, stationId, cargoId) {
+    taskQueue.append({
+        origin = origin,
+        stationId = origin.stationId,
+        cargoId = origin.cargoId,
+    });
 }

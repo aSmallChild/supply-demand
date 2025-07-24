@@ -51,24 +51,9 @@ function SupplyDemand::Start() {
 //        }
 
         local origins = findOriginIndustries(currentDate);
-//        findDestinations(origins);
+        trackDeliveries(origins);
+        // todo monitor cargo, and determine how much each industry should grow bearing in mind that meetind demand will lag behind deliveries
     }
-}
-
-function processOrigins(origins) {
-    local processedStations = {};
-    foreach (origin in origins) {
-        local stationCargoKey = origin.stationId + "_" + origin.cargoId;
-        if (stationCargoKey in processedStations) {
-            origin.destinations.extend(processedStations[stationCargoKey]);
-        } else {
-            // todo use stationAcceptingTowns to help find destinations
-            local destinations = findDestinations(origin.stationId, origin.cargoId);
-            processedStations[stationCargoKey] <- destinations;
-            origin.destinations.extend(destinations);
-        }
-    }
-    return origins;
 }
 
 //GSCargoMonitor.GetTownDeliveryAmount(companyId, cargoType, townId, true)
@@ -76,48 +61,92 @@ function processOrigins(origins) {
 //GSCargoMonitor.GetTownPickupAmount(companyId, cargoType, townId, true)
 //GSCargoMonitor.GetIndustryPickupAmount(companyId, cargoType, industryId, true)
 
-function processTask(task, industryDeliverySources) {
-    local industryName = GSIndustry.GetName(task.origIndustryId);
-    local cargoName = GSCargo.GetName(task.origCargoId);
-    local stationName = GSStation.GetName(task.origStationId);
+function trackDeliveries(origins) {
+    local taskQueue = [];
+    foreach (origin in origins) {
+        addTask(taskQueue, origin, origin.stationId, origin.cargoId);
+    }
 
-    GSLog.Info("On " + formatDate(task.date) + ", " + industryName + " shipped " + task.transported + " " + cargoName + " from " + stationName + " with a rating of " + task.origCargoRating + "%");
-    local vehicles = GSVehicleList_Station(task.origStationId);
+    local processedStationCargos = {};
+    while (taskQueue.len() > 0) {
+        local task = taskQueue.pop();
+        local stationCargoKey = task.stationId + "_" + task.cargoId;
+        if (stationCargoKey in processedStationCargos) {
+            processedStationCargos[stationCargoKey].origins.append(origin);
+            continue;
+        }
+
+        processedStationCargos[stationCargoKey] <- {
+            cargoId = task.cargoId,
+            origins = [task.origin]
+        };
+        trackDeliveryHop(task.origin, task.stationId, task.cargoId, taskQueue);
+    }
+
+    foreach (key, cacheEntry in processedStationCargos) {
+        if (cacheEntry.origins.len() < 2) {
+            continue;
+        }
+        local firstOrigin = cacheEntry.origins[0];
+        for (local i = 1; i < cacheEntry.origins.len(); i++) {
+            cacheEntry.origins[i].destinations.extend(firstOrigin.destinations);
+        }
+    }
+}
+
+function trackDeliveryHop(origin, stationId, cargoId, taskQueue) {
+    local vehicles = GSVehicleList_Station(stationId);
     foreach (vehicleId, _ in vehicles) {
-        if (GSVehicle.GetCapacity(vehicleId, task.origCargoId) < 1) {
+        if (GSVehicle.GetCapacity(vehicleId, cargoId) < 1) {
             continue;
         }
         local orderCount = GSOrder.GetOrderCount(vehicleId);
         local startOrderPositions = [];
         for (local i = 0; i < orderCount; i++) {
-            local stationId = GSStation.GetStationID(GSOrder.GetOrderDestination(vehicleId, i));
-            if (stationId == task.origStationId && canLoad(GSOrder.GetOrderFlags(vehicleId, i))) {
+            local orderStationId = GSStation.GetStationID(GSOrder.GetOrderDestination(vehicleId, i));
+            if (orderStationId == stationId && canLoad(GSOrder.GetOrderFlags(vehicleId, i))) {
                 startOrderPositions.append(i);
             }
         }
-        GSLog.Info(GSVehicle.GetName(vehicleId) + " leaves this station with caries said cargo. It has " + orderCount + " orders " + startOrderPositions.len() + " of which is/are to load at this station");
+        local unloadFound = false;
         foreach (startPosition in startOrderPositions) {
             for (local i = 0; i < orderCount - 1; i++) {
                 local orderPosition = (i + startPosition + 1) % orderCount;
                 local orderFlags = GSOrder.GetOrderFlags(vehicleId, orderPosition);
+                local nextStationId = GSStation.GetStationID(GSOrder.GetOrderDestination(vehicleId, orderPosition));
+                if (isTransfer(orderFlags)) {
+                    addTask(taskQueue, origin, nextStationId, cargoId);
+                    break;
+                }
+
                 if (!canUnload(orderFlags)) {
                     continue;
                 }
-                local stationId = GSStation.GetStationID(GSOrder.GetOrderDestination(vehicleId, orderPosition));
-                local acceptingTowns = stationAcceptingTowns(stationId, cargoId);
-                if (acceptingTowns.len() < 1) {
+
+                local recipients = stationCargoRecipients(nextStationId, cargoId);
+                if (!recipients) {
+                    if (isForceUnload(orderFlags)) {
+                        break;
+                    }
                     continue;
                 }
 
-                // if it is an intermediatry, find the next cargo types
-                // for each industry see if it is the end of a chain
+                if (recipients.townIds) {
+                    foreach (townId in recipients.townIds) {
+                        if (!listContains(origin.destinations, townId)) {
+                            origin.destinations.append(townId);
+                        }
+                    }
+                    break;
+                }
+
+                if (recipients.nextCargoIds) {
+                    foreach (nextCargoId in recipients.nextCargoIds) {
+                        addTask(taskQueue, origin, nextStationId, nextCargoId);
+                    }
+                    break;
+                }
             }
         }
-
-
-        // check the order flags to see if there is an unload or transfer
-        // for unload check if it is the final destination in which case track deliveries and link to source
-        // for transfer, rinse and repeat from that station
-        // local otherStations = GSStationList_Vehicle(vehicleId) shouldn't need this
     }
 }
