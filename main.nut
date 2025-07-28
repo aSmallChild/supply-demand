@@ -23,9 +23,8 @@ function SupplyDemand::Start() {
         }
         lastRunDate = nextRunDate;
         nextRunDate = getStartOfNextMonth(nextRunDate);
-        GSLog.Info(" ### ");
+        GSLog.Info("");
         GSLog.Info("Running for month: " + formatDate(lastRunDate));
-        GSLog.Info(" ### ");
 
 //        local towns = GSTownList();
 //        foreach (townId, _ in towns) {
@@ -53,6 +52,25 @@ function SupplyDemand::Start() {
         local origins = findOriginIndustries(currentDate);
         trackDeliveries(origins);
         // todo monitor cargo, and determine how much each industry should grow bearing in mind that meetind demand will lag behind deliveries
+
+//        GSLog.Info(origins.len() + " origins found");
+//        foreach (i, origin in origins) {
+//            GSLog.Info("origin #" + i + "has " + origin.destinations.len() + " destinations");
+//        }
+
+        GSLog.Info(origins.len() + " origins found");
+        foreach (i, origin in origins) {
+            local industryName = GSIndustry.GetName(origin.industryId);
+            local cargoName = GSCargo.GetName(origin.cargoId);
+            local stationName = GSStation.GetName(origin.stationId);
+
+            GSLog.Info("#" + i + " " + cargoName + " from " + industryName + " (" + stationName + ") is supplying " + origin.destinations.len() + " destinations:");
+            foreach (j, townId in origin.destinations) {
+                local townName = GSTown.GetName(townId);
+                GSLog.Info("  " + (j + 1) + ". " + townName);
+            }
+            GSLog.Info("");
+        }
     }
 }
 
@@ -71,17 +89,27 @@ function trackDeliveries(origins) {
     while (taskQueue.len() > 0) {
         local task = taskQueue.pop();
         local stationCargoKey = task.stationId + "_" + task.cargoId;
+        local stationName = GSStation.GetName(task.stationId);
+        local cargoName = GSCargo.GetName(task.cargoId);
+
+        GSLog.Info("Processing hop (key " + stationCargoKey + "): " + stationName + " with " + cargoName + " (queue size: " + taskQueue.len() + ")");
+
         if (stationCargoKey in processedStationCargos) {
-            processedStationCargos[stationCargoKey].origins.append(origin);
+            GSLog.Info("  Already processed this station+cargo combo, adding origin to cache");
+            processedStationCargos[stationCargoKey].origins.append(task.origin);
             continue;
         }
 
+        GSLog.Info("  First time processing " + stationName + " + " + cargoName + ", tracking delivery hop...");
         processedStationCargos[stationCargoKey] <- {
             cargoId = task.cargoId,
             origins = [task.origin]
         };
         trackDeliveryHop(task.origin, task.stationId, task.cargoId, taskQueue);
+
+        GSLog.Info("  Hop processed, queue now has " + taskQueue.len() + " items");
     }
+    GSLog.Info("All hops processed, applying cached destinations...");
 
     foreach (key, cacheEntry in processedStationCargos) {
         if (cacheEntry.origins.len() < 2) {
@@ -97,7 +125,9 @@ function trackDeliveries(origins) {
 function trackDeliveryHop(origin, stationId, cargoId, taskQueue) {
     local vehicles = GSVehicleList_Station(stationId);
     foreach (vehicleId, _ in vehicles) {
-        if (GSVehicle.GetCapacity(vehicleId, cargoId) < 1) {
+        local capacity = GSVehicle.GetCapacity(vehicleId, cargoId);
+
+        if (capacity < 1) {
             continue;
         }
         local orderCount = GSOrder.GetOrderCount(vehicleId);
@@ -108,10 +138,10 @@ function trackDeliveryHop(origin, stationId, cargoId, taskQueue) {
                 startOrderPositions.append(i);
             }
         }
-        local unloadFound = false;
+
         foreach (startPosition in startOrderPositions) {
             for (local i = 0; i < orderCount - 1; i++) {
-                local orderPosition = (i + startPosition + 1) % orderCount;
+                local orderPosition = (startPosition + i + 1) % orderCount;
                 local orderFlags = GSOrder.GetOrderFlags(vehicleId, orderPosition);
                 local nextStationId = GSStation.GetStationID(GSOrder.GetOrderDestination(vehicleId, orderPosition));
                 if (isTransfer(orderFlags)) {

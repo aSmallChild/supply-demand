@@ -145,7 +145,7 @@ function stationCargoRecipients(stationId, cargoId) {
     local coverageTiles = GSTileList_StationCoverage(stationId);
     foreach (tile, _ in coverageTiles) {
         local industryId = GSIndustry.GetIndustryID(tile);
-        if (listContains(acceptingIndustries, industryId) || GSIndustry.IsCargoAccepted(industryId, cargoId) == GSIndustry.CAS_ACCEPTED) {
+        if (GSIndustry.IsCargoAccepted(industryId, cargoId) != GSIndustry.CAS_ACCEPTED || listContains(acceptingIndustries, industryId)) {
             continue;
         }
         acceptingIndustries.append(industryId);
@@ -155,11 +155,11 @@ function stationCargoRecipients(stationId, cargoId) {
         }
         local producedCargos = GSIndustryType.GetProducedCargo(industryType);
         if (producedCargos.Count() < 1) {
-            continue
+            continue;
         }
-        foreach (cargoId, _ in producedCargos) {
-            if (!listContains(nextCargoIds, cargoId)) {
-                nextCargoIds.append(cargoId);
+        foreach (producedCargoId, _ in producedCargos) {
+            if (!listContains(nextCargoIds, producedCargoId)) {
+                nextCargoIds.append(producedCargoId);
             }
         }
     }
@@ -279,7 +279,7 @@ function findOriginIndustries(currentDate) {
 function addTask(taskQueue, origin, stationId, cargoId) {
     taskQueue.append({
         origin = origin,
-        stationId = origin.stationId,
-        cargoId = origin.cargoId,
+        stationId = stationId,
+        cargoId = cargoId,
     });
 }
