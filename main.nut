@@ -117,7 +117,11 @@ function trackDeliveries(origins) {
         }
         local firstOrigin = cacheEntry.origins[0];
         for (local i = 1; i < cacheEntry.origins.len(); i++) {
-            cacheEntry.origins[i].destinations.extend(firstOrigin.destinations);
+            foreach (townId in cacheEntry.origins[i].destinations) {
+                if (!listContains(firstOrigin.destinations, townId)) {
+                    firstOrigin.destinations.append(townId);
+                }
+            }
         }
     }
 }
@@ -173,6 +177,15 @@ function trackDeliveryHop(origin, stationId, cargoId, taskQueue) {
                 if (recipients.nextCargoIds) {
                     foreach (nextCargoId in recipients.nextCargoIds) {
                         addTask(taskQueue, origin, nextStationId, nextCargoId);
+                    }
+                if (recipients.nextCargoIds && recipients.nextIndustryIds) {
+                    foreach (industryId in recipients.nextIndustryIds) {
+                        local industryStationIds = getIndustryStations(industryId);
+                        foreach (industryStationId in industryStationIds) {
+                            foreach (nextCargoId in recipients.nextCargoIds) {
+                                addTask(taskQueue, origin, industryStationId, nextCargoId);
+                            }
+                        }
                     }
                     break;
                 }

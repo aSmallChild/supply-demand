@@ -136,6 +136,7 @@ function stationCargoRecipients(stationId, cargoId) {
         return {
             townIds = [GSStation.GetNearestTown(stationId)],
             nextCargoIds = null,
+            nextIndustryIds = null,
         };
     }
 
@@ -168,6 +169,7 @@ function stationCargoRecipients(stationId, cargoId) {
         return {
             townIds = null,
             nextCargoIds = nextCargoIds,
+            nextIndustryIds = acceptingIndustries,
         };
     }
 
@@ -183,6 +185,7 @@ function stationCargoRecipients(stationId, cargoId) {
         return {
             townIds = acceptingTowns,
             nextCargoIds = null,
+            nextIndustryIds = null,
         };
     }
 
