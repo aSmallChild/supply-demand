@@ -174,10 +174,6 @@ function trackDeliveryHop(origin, stationId, cargoId, taskQueue) {
                     break;
                 }
 
-                if (recipients.nextCargoIds) {
-                    foreach (nextCargoId in recipients.nextCargoIds) {
-                        addTask(taskQueue, origin, nextStationId, nextCargoId);
-                    }
                 if (recipients.nextCargoIds && recipients.nextIndustryIds) {
                     foreach (industryId in recipients.nextIndustryIds) {
                         local industryStationIds = getIndustryStations(industryId);
