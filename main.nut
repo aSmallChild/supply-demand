@@ -53,63 +53,49 @@ function SupplyDemand::Start() {
         trackDeliveries(origins);
         // todo monitor cargo, and determine how much each industry should grow bearing in mind that meetind demand will lag behind deliveries
 
-//        GSLog.Info(origins.len() + " origins found");
-//        foreach (i, origin in origins) {
-//            GSLog.Info("origin #" + i + "has " + origin.destinations.len() + " destinations");
-//        }
 
         GSLog.Info(origins.len() + " origins found");
         foreach (i, origin in origins) {
             local industryName = GSIndustry.GetName(origin.industryId);
             local cargoName = GSCargo.GetName(origin.cargoId);
-            local stationName = GSStation.GetName(origin.stationId);
-
-            GSLog.Info("#" + i + " " + cargoName + " from " + industryName + " (" + stationName + ") is supplying " + origin.destinations.len() + " destinations:");
+            local townList = "";
             foreach (j, townId in origin.destinations) {
                 local townName = GSTown.GetName(townId);
-                GSLog.Info("  " + (j + 1) + ". " + townName);
+                townList += (townList ? "" : ", ") + GSTown.GetName(townId);
             }
-            GSLog.Info("");
+            townList += ".";
+            GSLog.Info("#" + i + " raw " + cargoName + " from " + industryName + " feeds " + origin.destinations.len() + " town(s): " + townList);
         }
     }
 }
 
 //GSCargoMonitor.GetTownDeliveryAmount(companyId, cargoType, townId, true)
-//GSCargoMonitor.GetIndustryDeliveryAmount(companyId, cargoType, industryId, true)
 //GSCargoMonitor.GetTownPickupAmount(companyId, cargoType, townId, true)
 //GSCargoMonitor.GetIndustryPickupAmount(companyId, cargoType, industryId, true)
 
 function trackDeliveries(origins) {
     local taskQueue = [];
     foreach (origin in origins) {
-        addTask(taskQueue, origin, origin.stationId, origin.cargoId);
+        foreach (stationId in origin.stationIds) {
+            addTask(taskQueue, origin, stationId, origin.cargoId);
+        }
     }
 
     local processedStationCargos = {};
     while (taskQueue.len() > 0) {
         local task = taskQueue.pop();
         local stationCargoKey = task.stationId + "_" + task.cargoId;
-        local stationName = GSStation.GetName(task.stationId);
-        local cargoName = GSCargo.GetName(task.cargoId);
-
-        GSLog.Info("Processing hop (key " + stationCargoKey + "): " + stationName + " with " + cargoName + " (queue size: " + taskQueue.len() + ")");
 
         if (stationCargoKey in processedStationCargos) {
-            GSLog.Info("  Already processed this station+cargo combo, adding origin to cache");
             processedStationCargos[stationCargoKey].origins.append(task.origin);
             continue;
         }
-
-        GSLog.Info("  First time processing " + stationName + " + " + cargoName + ", tracking delivery hop...");
         processedStationCargos[stationCargoKey] <- {
             cargoId = task.cargoId,
             origins = [task.origin]
         };
         trackDeliveryHop(task.origin, task.stationId, task.cargoId, taskQueue);
-
-        GSLog.Info("  Hop processed, queue now has " + taskQueue.len() + " items");
     }
-    GSLog.Info("All hops processed, applying cached destinations...");
 
     foreach (key, cacheEntry in processedStationCargos) {
         if (cacheEntry.origins.len() < 2) {

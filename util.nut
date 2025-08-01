@@ -255,24 +255,24 @@ function findOriginIndustries(currentDate) {
                 continue;
             }
 
-            local transportedPercent = GSIndustry.GetLastMonthTransportedPercentage(industryId, cargoType);
+            local acceptingStations = [];
             foreach (stationId in stations) {
-                local cargoRating = GSStation.GetCargoRating(stationId, cargoType);
-                if (cargoRating < 1) {
+                if (GSStation.GetCargoRating(stationId, cargoType) < 1) {
                     continue;
                 }
-                origins.append({
-                    date = currentDate,
-                    industryId = industryId,
-                    cargoId = cargoType,
-                    stationId = stationId,
-                    cargoRating = cargoRating,
-                    townId = GSStation.GetNearestTown(stationId),
-                    transported = transported,
-                    transportedPercent = transportedPercent,
-                    destinations = []
-                });
+                acceptingStations.append(stationId);
             }
+
+            if (!acceptingStations.len()) {
+                continue;
+            }
+            origins.append({
+                date = currentDate,
+                industryId = industryId,
+                cargoId = cargoType,
+                stationIds = acceptingStations,
+                destinations = []
+            });
         }
     }
 
