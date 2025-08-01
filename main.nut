@@ -70,6 +70,7 @@ function SupplyDemand::Start() {
 }
 
 //GSCargoMonitor.GetTownDeliveryAmount(companyId, cargoType, townId, true)
+//GSCargoMonitor.GetIndustryDeliveryAmount(companyId, cargoType, industryId, true)
 //GSCargoMonitor.GetTownPickupAmount(companyId, cargoType, townId, true)
 //GSCargoMonitor.GetIndustryPickupAmount(companyId, cargoType, industryId, true)
 
