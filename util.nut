@@ -270,8 +270,10 @@ function findOriginIndustries(currentDate) {
                 date = currentDate,
                 industryId = industryId,
                 cargoId = cargoType,
-                stationIds = acceptingStations,
-                destinations = []
+                possibleStationIds = acceptingStations,
+                originStationIds = [],
+                destinationStationIds = [],
+                destinationTownIds = []
             });
         }
     }
@@ -279,10 +281,22 @@ function findOriginIndustries(currentDate) {
     return origins;
 }
 
-function addTask(taskQueue, origin, stationId, cargoId) {
+function addTask(taskQueue, origin, hopStationId, cargoId, originStationId) {
     taskQueue.append({
         origin = origin,
-        stationId = stationId,
+        hopStationId = hopStationId,
         cargoId = cargoId,
+        originStationId = originStationId,
     });
 }
+
+function pruneDeadEnds(origins) {
+    local pruned = [];
+    foreach (origin in origins) {
+        if (origin.originStationIds.len()) {
+            pruned.append(origin);
+        }
+    }
+    return pruned;
+}
+
