@@ -48,10 +48,14 @@ function SupplyDemand::Start() {
 //
 //            }
 //        }
+        // todo end all monitoring on script start
+        // todo cache origins and destinations
+        // todo update cache every month, end monitoring on things removed from the cache
 
         local origins = findOriginIndustries(currentDate);
         trackDeliveries(origins);
-        origins = pruneDeadEnds(origins);
+        local groups = groupDestinationsAndOrigins(origins);
+        origins = groups.origins;
         GSLog.Info(origins.len() + " origins found");
         foreach (i, origin in origins) {
             local industryName = GSIndustry.GetName(origin.industryId);

@@ -271,6 +271,7 @@ function findOriginIndustries(currentDate) {
                 industryId = industryId,
                 cargoId = cargoType,
                 possibleStationIds = acceptingStations,
+                sentCargo = 0, // todo sum of monitoring for this month
                 originStationIds = [],
                 destinationStationIds = [],
                 destinationTownIds = []
@@ -290,13 +291,43 @@ function addTask(taskQueue, origin, hopStationId, cargoId, originStationId) {
     });
 }
 
-function pruneDeadEnds(origins) {
-    local pruned = [];
+function groupDestinationsAndOrigins(origins) {
+    local prunedOrigins = [];
+    local destinations = [];
     foreach (origin in origins) {
-        if (origin.originStationIds.len()) {
-            pruned.append(origin);
+        if (!origin.originStationIds.len()) {
+            continue;
+        }
+        prunedOrigins.append(origin);
+        foreach (townId in origin.destinationTownIds) {
+            local destination = null;
+            foreach (existingDestination in destinations) {
+                if (existingDestionation.townId == destination.townId) {
+                    destination = existingDestionation;
+                    break;
+                }
+            }
+            if (!destination) {
+                destination = {
+                    townId = townId,
+                    cargoId = TODO, # todo
+                    originIndustryIds = [],
+                    destinationStationIds = [],
+                    receivedCargo = 0, // todo sum of monitoring for this month
+                }
+                destinations.append(destination);
+            }
+            destination.originIndustryIds.append(origin.industryId);
+            foreach (stationId in origin.destinationStationIds) {
+                if (!listContains(destination.destinationStationIds, stationId)) {
+                    destination.destinationStationIds.append(stationId);
+                }
+            }
         }
     }
-    return pruned;
+    return {
+        origins = prunedOrigins,
+        destinations = destinations
+    };
 }
 

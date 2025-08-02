@@ -112,38 +112,39 @@ it's possible to create news
     - grow the first industry with more than 80% transported
 
 Plan A
-- when tracking cargo hops, keep origin station id that it started from
-- when tracking to a destination in the hop tracking, add it as a confirmed station
-- also when tracking to a destination add origins to destinations
-- then destinations will have the correct mapping to use for cargo tracking, both from origins and to destinations
-    - to make that work it will need
-        - origins: stationId, industryId
-        - destinations: stationId, townId
-    - in both cases stationId gives companyId
-- with that mapping in place use cargo monitoring to get a count of how much was sent and received
-    - prior to expanding towns and industries, accounting needs to be done
-        - use cargo monitoring to get the exact amounts in the last month
-            - this is not going to be 100% accurate as there is latency between sending and receiving
-        - accounting: add cargo shipped, subtract cargo received
-            - hopefully it's impossible for this to be negative
-            - assume cargo is evenly distributed between destinations
-                - this assumption may be necessary until I find a way to track how much cargo passes through each
+
+- [x] when tracking cargo hops, keep origin station id that it started from
+- [x] when tracking to a destination in the hop tracking, add it as a confirmed station
+- [ ] also when tracking to a destination add origins to destinations???
+- [x] then destinations will have the correct mapping to use for cargo tracking, both from origins and to destinations
+    - [x] to make that work it will need
+        - [x] origins: stationId, industryId
+        - [x] destinations: stationId, townId
+    - [x] in both cases stationId gives companyId
+- [ ] with that mapping in place use cargo monitoring to get a count of how much was sent and received
+    - [ ] prior to expanding towns and industries, accounting needs to be done
+        - [ ] use cargo monitoring to get the exact amounts in the last month
+            - [ ] this is not going to be 100% accurate as there is latency between sending and receiving
+        - [ ] accounting: add cargo shipped, subtract cargo received
+            - [ ] hopefully it's impossible for this to be negative
+            - [ ] assume cargo is evenly distributed between destinations
+                - [ ] this assumption may be necessary until I find a way to track how much cargo passes through each
                   station at each hop
-            - due to the latency between sending and receiving, the overall balance may always be positive
-            - where demand is lacking, grow industries evenly (so with a bias toward smaller industries so they catch up
+            - [ ] due to the latency between sending and receiving, the overall balance may always be positive
+            - [ ] where demand is lacking, grow industries evenly (so with a bias toward smaller industries so they catch up
               to larger producers)
-        - example scenario:
-            - industry A produces 4 cargo & supplies town A & B
-            - industry B produces 2 cargo & supplies town A
-            - industry C produces 1 cargo & supplies town B
-            - town A receives 5/6
-            - town B receives 2/5
-            - overall 7 produced, and 7 received
-            - if demand is not met in town A, then industry A and B should scale up, starting with industry B since it's smaller
-              - in a following cycle, given that industry production doubles when it is increased, industry A & B would be equal in size, and either could scale
-            - if demand is not met in town B, then industry A and C should scale up, starting with industry C since it's smaller
-              - in a following cycle, given that industry production doubles when it is increased, industry C would still be smaller than A, and remains the preferred industry for growth
-            - if demand is met in either town, the town should expand, and this will increase the demand for the next cycle
+        - [ ] example scenario:
+            - [ ] industry A produces 4 cargo & supplies town A & B
+            - [ ] industry B produces 2 cargo & supplies town A
+            - [ ] industry C produces 1 cargo & supplies town B
+            - [ ] town A receives 5/6
+            - [ ] town B receives 2/5
+            - [ ] overall 7 produced, and 7 received
+            - [ ] if demand is not met in town A, then industry A and B should scale up, starting with industry B since it's smaller
+              - [ ] in a following cycle, given that industry production doubles when it is increased, industry A & B would be equal in size, and either could scale
+            - [ ] if demand is not met in town B, then industry A and C should scale up, starting with industry C since it's smaller
+              - [ ] in a following cycle, given that industry production doubles when it is increased, industry C would still be smaller than A, and remains the preferred industry for growth
+            - [ ] if demand is met in either town, the town should expand, and this will increase the demand for the next cycle
     
 Plan B (or step 2)
     - factor in transport percentages before deciding what industry to expand
