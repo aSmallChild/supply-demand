@@ -66,7 +66,7 @@ function SupplyDemand::Start() {
                 townList += (townList ? "" : ", ") + GSTown.GetName(townId);
             }
             townList += ".";
-            GSLog.Info("#" + i + " raw " + cargoName + " from " + industryName + " feeds " + origin.destinationTownIds.len() + " town(s): " + townList);
+            GSLog.Info("#" + (i + 1) + " raw " + cargoName + " from " + industryName + " feeds " + origin.destinationTownIds.len() + " town(s): " + townList);
         }
     }
 }
@@ -164,6 +164,9 @@ function trackDeliveryHop(task, taskQueue) {
                         }
                         if (!listContains(task.origin.destinationStationIds, nextStationId)) {
                             task.origin.destinationStationIds.append(nextStationId);
+                        }
+                        if (!listContains(task.origin.destinationCargoIds, task.cargoId)) {
+                            task.origin.destinationCargoIds.append(task.cargoId);
                         }
                     }
                     break;

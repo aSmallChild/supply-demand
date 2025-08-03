@@ -130,30 +130,22 @@ function stationCargoRecipients(stationId, cargoId) {
         return null;
     }
 
-    local cargoLabel = GSCargo.GetCargoLabel(cargoId);
-    if (cargoLabel == "GOOD" || cargoLabel == "MAIL" || cargoLabel == "FOOD" ||
-        cargoLabel == "WATR" || cargoLabel == "PASS") {
-        return {
-            townIds = [GSStation.GetNearestTown(stationId)],
-            nextCargoIds = null,
-            nextIndustryIds = null,
-        };
-    }
-
     local acceptingTowns = [];
     local acceptingIndustries = [];
     local nextCargoIds = [];
     local coverageTiles = GSTileList_StationCoverage(stationId);
     foreach (tile, _ in coverageTiles) {
         local industryId = GSIndustry.GetIndustryID(tile);
-        if (GSIndustry.IsCargoAccepted(industryId, cargoId) != GSIndustry.CAS_ACCEPTED || listContains(acceptingIndustries, industryId)) {
+        if (listContains(acceptingIndustries, industryId) || GSIndustry.IsCargoAccepted(industryId, cargoId) != GSIndustry.CAS_ACCEPTED) {
             continue;
         }
         acceptingIndustries.append(industryId);
-        local industryType = GSIndustry.GetIndustryType(industryId);
-        if (!GSIndustryType.IsProcessingIndustry(industryType)) {
-            continue;
+        local tile = GSIndustry.GetLocation(industryId);
+        local townId = GSTile.GetClosestTown(tile);
+        if (!listContains(acceptingTowns, townId)) {
+            acceptingTowns.append(townId);
         }
+        local industryType = GSIndustry.GetIndustryType(industryId);
         local producedCargos = GSIndustryType.GetProducedCargo(industryType);
         if (producedCargos.Count() < 1) {
             continue;
@@ -165,31 +157,37 @@ function stationCargoRecipients(stationId, cargoId) {
         }
     }
 
-    if (nextCargoIds.len() > 0) {
-        return {
-            townIds = null,
-            nextCargoIds = nextCargoIds,
-            nextIndustryIds = acceptingIndustries,
-        };
-    }
-
-    foreach (industryId in acceptingIndustries) {
-        local tile = GSIndustry.GetLocation(industryId);
-        local townId = GSTile.GetClosestTown(tile);
-        if (!listContains(acceptingTowns, townId)) {
-            acceptingTowns.append(townId);
+    foreach (nextCargoId in nextCargoIds) {
+        if (nextCargoId == cargoId) {
+            nextCargoIds = [];
+            break;
         }
     }
 
-    if (acceptingTowns.len() > 0) {
+    if (nextCargoIds.len() < 1 && acceptingTowns.len() < 1) {
         return {
-            townIds = acceptingTowns,
+            townIds = [GSStation.GetNearestTown(stationId)],
+            industryIds = null,
             nextCargoIds = null,
             nextIndustryIds = null,
         };
     }
 
-    return null;
+    if (nextCargoIds.len() < 1) {
+        return {
+            townIds = acceptingTowns,
+            industryIds = (acceptingIndustries.len() > 0 ? acceptingIndustries : null),
+            nextCargoIds = null,
+            nextIndustryIds = null
+        };
+    }
+
+    return {
+        townIds = null,
+        industryIds = null,
+        nextCargoIds = nextCargoIds,
+        nextIndustryIds = acceptingIndustries,
+    };
 }
 
 function findNextUnloadStationInOrders(vehicleId, originStationId, cargoType) {
@@ -230,10 +228,6 @@ function findOriginIndustries(currentDate) {
     local origins = [];
     foreach (industryId, _ in industries) {
         local industryType = GSIndustry.GetIndustryType(industryId);
-        if (!GSIndustryType.IsRawIndustry(industryType)) {
-            continue;
-        }
-
         if (!GSIndustryType.ProductionCanIncrease(industryType)) {
             continue;
         }
@@ -274,7 +268,8 @@ function findOriginIndustries(currentDate) {
                 sentCargo = 0, // todo sum of monitoring for this month
                 originStationIds = [],
                 destinationStationIds = [],
-                destinationTownIds = []
+                destinationTownIds = [],
+                destinationCargoIds = [],
             });
         }
     }
@@ -302,17 +297,18 @@ function groupDestinationsAndOrigins(origins) {
         foreach (townId in origin.destinationTownIds) {
             local destination = null;
             foreach (existingDestination in destinations) {
-                if (existingDestionation.townId == destination.townId) {
-                    destination = existingDestionation;
+                if (existingDestination.townId == townId) {
+                    destination = existingDestination;
                     break;
                 }
             }
             if (!destination) {
                 destination = {
                     townId = townId,
-                    cargoId = TODO, # todo
                     originIndustryIds = [],
                     destinationStationIds = [],
+                    destinationIndustryIds = [], // todo
+                    destinationCargoIds = [],
                     receivedCargo = 0, // todo sum of monitoring for this month
                 }
                 destinations.append(destination);
