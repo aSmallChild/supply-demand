@@ -68,6 +68,64 @@ function SupplyDemand::Start() {
             townList += ".";
             GSLog.Info("#" + (i + 1) + " raw " + cargoName + " from " + industryName + " feeds " + origin.destinationTownIds.len() + " town(s): " + townList);
         }
+
+        local destinations = groups.destinations;
+        GSLog.Info("=== DESTINATION ANALYSIS ===");
+        GSLog.Info("Found " + destinations.len() + " destinations");
+        GSLog.Info("");
+
+        foreach (i, destination in destinations) {
+            local townName = GSTown.GetName(destination.townId);
+            GSLog.Info("Destination #" + (i + 1) + ": " + townName);
+            GSLog.Info("  Received cargo: " + destination.receivedCargo);
+
+            // Origin industries
+            if (destination.originIndustryIds.len() == 0) {
+                GSLog.Info("  Origin industries: (none)");
+            } else {
+                GSLog.Info("  Origin industries (" + destination.originIndustryIds.len() + "):");
+                foreach (j, industryId in destination.originIndustryIds) {
+                    local industryName = GSIndustry.GetName(industryId);
+                    GSLog.Info("    " + (j + 1) + ". " + industryName);
+                }
+            }
+
+            // Destination stations
+            if (destination.destinationStationIds.len() == 0) {
+                GSLog.Info("  Destination stations: (none)");
+            } else {
+                GSLog.Info("  Destination stations (" + destination.destinationStationIds.len() + "):");
+                foreach (j, stationId in destination.destinationStationIds) {
+                    local stationName = GSStation.GetName(stationId);
+                    GSLog.Info("    " + (j + 1) + ". " + stationName);
+                }
+            }
+
+            // Destination industries
+            if (destination.destinationIndustryIds.len() == 0) {
+                GSLog.Info("  Destination industries: (none)");
+            } else {
+                GSLog.Info("  Destination industries (" + destination.destinationIndustryIds.len() + "):");
+                foreach (j, industryId in destination.destinationIndustryIds) {
+                    local industryName = GSIndustry.GetName(industryId);
+                    GSLog.Info("    " + (j + 1) + ". " + industryName);
+                }
+            }
+
+            // Destination cargo types
+            if (destination.destinationCargoIds.len() == 0) {
+                GSLog.Info("  Destination cargo types: (none)");
+            } else {
+                GSLog.Info("  Destination cargo types (" + destination.destinationCargoIds.len() + "):");
+                foreach (j, cargoId in destination.destinationCargoIds) {
+                    local cargoName = GSCargo.GetName(cargoId);
+                    GSLog.Info("    " + (j + 1) + ". " + cargoName);
+                }
+            }
+
+            GSLog.Info(""); // Empty line between destinations
+        }
+        GSLog.Info("=== END DESTINATION ANALYSIS ===");
     }
 }
 
@@ -159,16 +217,24 @@ function trackDeliveryHop(task, taskQueue) {
                         if (!listContains(task.origin.destinationTownIds, townId)) {
                             task.origin.destinationTownIds.append(townId);
                         }
-                        if (!listContains(task.origin.originStationIds, task.originStationId)) {
-                            task.origin.originStationIds.append(task.originStationId);
-                        }
-                        if (!listContains(task.origin.destinationStationIds, nextStationId)) {
-                            task.origin.destinationStationIds.append(nextStationId);
-                        }
-                        if (!listContains(task.origin.destinationCargoIds, task.cargoId)) {
-                            task.origin.destinationCargoIds.append(task.cargoId);
+                    }
+
+                    if (!listContains(task.origin.originStationIds, task.originStationId)) {
+                        task.origin.originStationIds.append(task.originStationId);
+                    }
+                    if (!listContains(task.origin.destinationStationIds, nextStationId)) {
+                        task.origin.destinationStationIds.append(nextStationId);
+                    }
+                    if (!listContains(task.origin.destinationCargoIds, task.cargoId)) {
+                        task.origin.destinationCargoIds.append(task.cargoId);
+                    }
+
+                    foreach (industryId in recipients.industryIds) {
+                        if (!listContains(task.origin.destinationIndustryIds, industryId)) {
+                            task.origin.destinationIndustryIds.append(industryId);
                         }
                     }
+
                     break;
                 }
 

@@ -28,6 +28,8 @@
     - pruning would be a good addition to not track cargo that goes down dead ends
     - dead ends include force unloads, transfers to nowhere, and routes that terminate at an intermediary
     - may need some singly linked lists from origins to destinations to help with pruning
+- [x] allow valuables to be tracked
+- [ ] only process shared orders once
 
 # Notes & Ideas
 
@@ -147,11 +149,11 @@ Plan A
             - [ ] if demand is met in either town, the town should expand, and this will increase the demand for the next cycle
     
 Plan B (or step 2)
-    - factor in transport percentages before deciding what industry to expand
-        - example scenario (WIP account for numbers being inaccurate between monitoring and transport percentages)
-            - industry A produces 4 cargo (100% is transported) & supplies town A & B
-            - industry B produces 3 cargo (67% is transported) & supplies town A
-            - industry C produces 4 cargo (25% is transported) & supplies town B
-            - overall 7 produced, and 7 received
-            - if demand is not met in town A, then industry A and B should scale up, starting with industry A since it that delivery route is not fully saturated with cargo
-            - if demand is not met in town B, then industry A and C should scale up, starting with industry A since it that delivery route is not fully saturated with cargo
+- [ ] factor in transport percentages before deciding what industry to expand
+    - [ ] example scenario (WIP account for numbers being inaccurate between monitoring and transport percentages)
+        - [ ] industry A produces 4 cargo (100% is transported) & supplies town A & B
+        - [ ] industry B produces 3 cargo (67% is transported) & supplies town A
+        - [ ] industry C produces 4 cargo (25% is transported) & supplies town B
+        - [ ] overall 7 produced, and 7 received
+        - [ ] if demand is not met in town A, then industry A and B should scale up, starting with industry A since it that delivery route is not fully saturated with cargo
+        - [ ] if demand is not met in town B, then industry A and C should scale up, starting with industry A since it that delivery route is not fully saturated with cargo

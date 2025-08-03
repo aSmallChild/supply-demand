@@ -167,7 +167,7 @@ function stationCargoRecipients(stationId, cargoId) {
     if (nextCargoIds.len() < 1 && acceptingTowns.len() < 1) {
         return {
             townIds = [GSStation.GetNearestTown(stationId)],
-            industryIds = null,
+            industryIds = acceptingIndustries,
             nextCargoIds = null,
             nextIndustryIds = null,
         };
@@ -176,7 +176,7 @@ function stationCargoRecipients(stationId, cargoId) {
     if (nextCargoIds.len() < 1) {
         return {
             townIds = acceptingTowns,
-            industryIds = (acceptingIndustries.len() > 0 ? acceptingIndustries : null),
+            industryIds = acceptingIndustries,
             nextCargoIds = null,
             nextIndustryIds = null
         };
@@ -268,6 +268,7 @@ function findOriginIndustries(currentDate) {
                 sentCargo = 0, // todo sum of monitoring for this month
                 originStationIds = [],
                 destinationStationIds = [],
+                destinationIndustryIds = [],
                 destinationTownIds = [],
                 destinationCargoIds = [],
             });
@@ -307,7 +308,7 @@ function groupDestinationsAndOrigins(origins) {
                     townId = townId,
                     originIndustryIds = [],
                     destinationStationIds = [],
-                    destinationIndustryIds = [], // todo
+                    destinationIndustryIds = [],
                     destinationCargoIds = [],
                     receivedCargo = 0, // todo sum of monitoring for this month
                 }
@@ -317,6 +318,16 @@ function groupDestinationsAndOrigins(origins) {
             foreach (stationId in origin.destinationStationIds) {
                 if (!listContains(destination.destinationStationIds, stationId)) {
                     destination.destinationStationIds.append(stationId);
+                }
+            }
+            foreach (cargo in origin.destinationCargoIds) {
+                if (!listContains(destination.destinationCargoIds, cargo)) {
+                    destination.destinationCargoIds.append(cargo);
+                }
+            }
+            foreach (industryId in origin.destinationIndustryIds) {
+                if (!listContains(destination.destinationIndustryIds, industryId)) {
+                    destination.destinationIndustryIds.append(industryId);
                 }
             }
         }
