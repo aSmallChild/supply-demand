@@ -7,6 +7,12 @@ function listContains(haystack, needle) {
     return false;
 }
 
+function addUnique(list, value) {
+    if (!listContains(list, value)) {
+        list.append(value);
+    }
+}
+
 function canLoad(orderFlags) {
     if (orderFlags == GSOrder.OF_NONE) {
         return true;
@@ -142,18 +148,14 @@ function stationCargoRecipients(stationId, cargoId) {
         acceptingIndustries.append(industryId);
         local tile = GSIndustry.GetLocation(industryId);
         local townId = GSTile.GetClosestTown(tile);
-        if (!listContains(acceptingTowns, townId)) {
-            acceptingTowns.append(townId);
-        }
+        addUnique(acceptingTowns, townId);
         local industryType = GSIndustry.GetIndustryType(industryId);
         local producedCargos = GSIndustryType.GetProducedCargo(industryType);
         if (producedCargos.Count() < 1) {
             continue;
         }
         foreach (producedCargoId, _ in producedCargos) {
-            if (!listContains(nextCargoIds, producedCargoId)) {
-                nextCargoIds.append(producedCargoId);
-            }
+            addUnique(nextCargoIds, producedCargoId);
         }
     }
 
@@ -318,7 +320,7 @@ function isValidOriginIndustry(industryType) {
             continue;
         }
 
-        // exception for banks (has to
+        // exception for banks (works with IsRawIndustry() above)
         if (GSCargo.HasCargoClass(cargoId, GSCargo.CC_ARMOURED)) {
             continue;
         }
@@ -367,19 +369,13 @@ function groupDestinationsAndOrigins(origins) {
             }
             destination.originIndustryIds.append(origin.industryId);
             foreach (stationId in origin.destinationStationIds) {
-                if (!listContains(destination.destinationStationIds, stationId)) {
-                    destination.destinationStationIds.append(stationId);
-                }
+                addUnique(destination.destinationStationIds, stationId);
             }
             foreach (cargo in origin.destinationCargoIds) {
-                if (!listContains(destination.destinationCargoIds, cargo)) {
-                    destination.destinationCargoIds.append(cargo);
-                }
+                addUnique(destination.destinationCargoIds, cargo);
             }
             foreach (industryId in origin.destinationIndustryIds) {
-                if (!listContains(destination.destinationIndustryIds, industryId)) {
-                    destination.destinationIndustryIds.append(industryId);
-                }
+                addUnique(destination.destinationIndustryIds, industryId);
             }
         }
     }

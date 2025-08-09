@@ -165,9 +165,7 @@ function trackDeliveries(origins) {
         local firstOrigin = cacheEntry.origins[0];
         for (local i = 1; i < cacheEntry.origins.len(); i++) {
             foreach (townId in cacheEntry.origins[i].destinationTownIds) {
-                if (!listContains(firstOrigin.destinationTownIds, townId)) {
-                    firstOrigin.destinationTownIds.append(townId);
-                }
+                addUnique(firstOrigin.destinationTownIds, townId);
             }
         }
     }
@@ -214,25 +212,15 @@ function trackDeliveryHop(task, taskQueue) {
 
                 if (recipients.townIds) {
                     foreach (townId in recipients.townIds) {
-                        if (!listContains(task.origin.destinationTownIds, townId)) {
-                            task.origin.destinationTownIds.append(townId);
-                        }
+                        addUnique(task.origin.destinationTownIds, townId)
                     }
 
-                    if (!listContains(task.origin.originStationIds, task.originStationId)) {
-                        task.origin.originStationIds.append(task.originStationId);
-                    }
-                    if (!listContains(task.origin.destinationStationIds, nextStationId)) {
-                        task.origin.destinationStationIds.append(nextStationId);
-                    }
-                    if (!listContains(task.origin.destinationCargoIds, task.cargoId)) {
-                        task.origin.destinationCargoIds.append(task.cargoId);
-                    }
+                    addUnique(task.origin.originStationIds, task.originStationId);
+                    addUnique(task.origin.destinationStationIds, nextStationId);
+                    addUnique(task.origin.destinationCargoIds, task.cargoId);
 
                     foreach (industryId in recipients.industryIds) {
-                        if (!listContains(task.origin.destinationIndustryIds, industryId)) {
-                            task.origin.destinationIndustryIds.append(industryId);
-                        }
+                        addUnique(task.origin.destinationIndustryIds, industryId);
                     }
 
                     break;
