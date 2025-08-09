@@ -224,11 +224,25 @@ function findNextUnloadStationInOrders(vehicleId, originStationId, cargoType) {
 }
 
 function findOriginIndustries(currentDate) {
+    local validOriginTypes = getValidOriginIndustryTypes();
     local industries = GSIndustryList();
     local origins = [];
     foreach (industryId, _ in industries) {
         local industryType = GSIndustry.GetIndustryType(industryId);
-        if (!GSIndustryType.ProductionCanIncrease(industryType)) {
+
+        local isValid = false;
+        foreach (validType in validOriginTypes) {
+            if (validType == industryType) {
+                isValid = true;
+                break;
+            }
+        }
+        if (!isValid) {
+            continue;
+        }
+
+        local currentLevel = GSIndustry.GetProductionLevel(industryId);
+        if (!GSIndustry.SetProductionLevel(industryId, currentLevel, false, "")) {
             continue;
         }
 
@@ -244,10 +258,10 @@ function findOriginIndustries(currentDate) {
                 continue;
             }
 
-            local label = GSCargo.GetCargoLabel(cargoType);
-            if (label == "PASS" || label == "MAIL") {
-                continue;
-            }
+//            local label = GSCargo.GetCargoLabel(cargoType);
+//            if (label == "PASS" || label == "MAIL") {
+//                continue;
+//            }
 
             local acceptingStations = [];
             foreach (stationId in stations) {
@@ -276,6 +290,43 @@ function findOriginIndustries(currentDate) {
     }
 
     return origins;
+}
+
+function getValidOriginIndustryTypes() {
+    local validTypes = [];
+    foreach (industryType, _ in GSIndustryTypeList()) {
+        if (isValidOriginIndustry(industryType)) {
+            validTypes.append(industryType);
+        }
+    }
+    return validTypes;
+}
+
+function isValidOriginIndustry(industryType) {
+    if (!GSIndustryType.ProductionCanIncrease(industryType)) {
+        return false;
+    }
+
+    if (GSIndustryType.IsRawIndustry(industryType)) {
+        return true;
+    }
+
+    local acceptedCargoIds = GSIndustryType.GetAcceptedCargo(industryType);
+    foreach (cargoId, _ in acceptedCargoIds) {
+        // exception for oil rigs
+        if (GSCargo.HasCargoClass(cargoId, GSCargo.CC_PASSENGERS)) {
+            continue;
+        }
+
+        // exception for banks (has to
+        if (GSCargo.HasCargoClass(cargoId, GSCargo.CC_ARMOURED)) {
+            continue;
+        }
+
+        return false;
+    }
+
+    return true;
 }
 
 function addTask(taskQueue, origin, hopStationId, cargoId, originStationId) {
