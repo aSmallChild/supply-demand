@@ -287,6 +287,7 @@ function findOriginIndustries(currentDate) {
                 destinationIndustryIds = [],
                 destinationTownIds = [],
                 destinationCargoIds = [],
+                destinationTracking = [],
             });
         }
     }
@@ -385,3 +386,163 @@ function groupDestinationsAndOrigins(origins) {
     };
 }
 
+
+function calculateDemand() {
+    foreach (townId in towns) {
+        local population = GSTown.GetPopulation(townId);
+        foreach (cargoId in GSCargoTypes()) {
+
+        }
+        // prefer town effects
+    }
+}
+
+function registerDestination(task, recipients, stationId) {
+    foreach (townId in recipients.townIds) {
+        addUnique(task.origin.destinationTownIds, townId);
+    }
+
+    addUnique(task.origin.originStationIds, task.originStationId);
+    addUnique(task.origin.destinationStationIds, stationId);
+    addUnique(task.origin.destinationCargoIds, task.cargoId);
+    local companyId = GSStation.GetOwner(stationId);
+
+    foreach (industryId in recipients.industryIds) {
+        addUnique(task.origin.destinationIndustryIds, industryId);
+        task.origin.destinationTracking.append(CargoTracker.track(companyId, task.cargoId, null, industryId));
+    }
+
+    if (recipients.industryIds.len()) {
+        return;
+    }
+
+    foreach (townId in recipients.townIds) {
+        task.origin.destinationTracking.append(CargoTracker.track(companyId, task.cargoId, townId, null));
+    }
+}
+
+class CargoTracker {
+    static trackedCargo = {};
+
+    static function track(companyId, cargoId, townId, industryId) {
+        if (industryId) {
+            local key = companyId + "_" + cargoId + "_i" + industryId;
+            if (key in CargoTracker.trackedCargo) {
+                return CargoTracker.touch(CargoTracker.trackedCargo[key]);
+            }
+            CargoTracker.trackedCargo[key] <- CargoTracker.buildParams(key, companyId, cargoId, null, industryId);
+            return CargoTracker.trackedCargo[key];
+        }
+
+        local key = companyId + "_" + cargoId + "_t" + townId;
+        if (key in CargoTracker.trackedCargo) {
+            return CargoTracker.touch(CargoTracker.trackedCargo[key]);
+        }
+        CargoTracker.trackedCargo[key] <- CargoTracker.buildParams(key, companyId, cargoId, townId, null);
+        return CargoTracker.trackedCargo[key];
+    }
+
+    static function buildParams(key, companyId, cargoId, townId, industryId) {
+        return {
+            key = key,
+            companyId = companyId,
+            cargoId = cargoId,
+            townId = townId,
+            industryId = industryId,
+            date = GSDate.GetCurrentDate(),
+            lastDeliveryAmount = 0,
+        };
+    }
+
+    static function touch(o) {
+        o.date = GSDate.GetCurrentDate();
+        return o;
+    }
+
+//    static function update(date) {
+//
+//        local keysToRemove = [];
+//
+//        foreach (key, value in CargoTracker.trackedCargo) {
+//            local keepTracking = value.date >= date;
+//            if (!keepTracking) {
+//                keysToRemove.append(key);
+//            }
+//
+//            if (value.industryId) {
+//                value.lastDeliveryAmount = GSCargoMonitor.GetIndustryDeliveryAmount(
+//                    value.companyId,
+//                    value.cargoId,
+//                    value.industryId,
+//                    keepTracking
+//                );
+//                continue;
+//            }
+//
+//            value.lastDeliveryAmount = GSCargoMonitor.GetTownDeliveryAmount(
+//                value.companyId,
+//                value.cargoId,
+//                value.townId,
+//                keepTracking
+//            );
+//        }
+//
+//        foreach (key in keysToRemove) {
+//            delete CargoTracker.trackedCargo[key];
+//        }
+//    }
+
+    static function update(date) {
+        GSLog.Info("=== CargoTracker Update ===");
+        GSLog.Info("Update date: " + formatDate(date));
+        GSLog.Info("Total tracked items: " + CargoTracker.trackedCargo.len());
+
+        local keysToRemove = [];
+        local keptCount = 0;
+        local removedCount = 0;
+
+        foreach (key, value in CargoTracker.trackedCargo) {
+            local keepTracking = value.date >= date;
+            local cargoName = GSCargo.GetName(value.cargoId);
+            local companyName = GSCompany.GetName(value.companyId);
+
+            if (!keepTracking) {
+                GSLog.Info("REMOVING: " + key + " (date: " + formatDate(value.date) + " < " + formatDate(date) + ")");
+                keysToRemove.append(key);
+                removedCount++;
+            } else {
+                keptCount++;
+            }
+
+            if (value.industryId) {
+                local industryName = GSIndustry.GetName(value.industryId);
+                value.lastDeliveryAmount = GSCargoMonitor.GetIndustryDeliveryAmount(
+                    value.companyId,
+                    value.cargoId,
+                    value.industryId,
+                    keepTracking
+                );
+                GSLog.Info("INDUSTRY: " + companyName + " delivered " + value.lastDeliveryAmount + " " + cargoName + " to " + industryName + " (keep: " + keepTracking + ")");
+                continue;
+            }
+
+            local townName = GSTown.GetName(value.townId);
+            value.lastDeliveryAmount = GSCargoMonitor.GetTownDeliveryAmount(
+                value.companyId,
+                value.cargoId,
+                value.townId,
+                keepTracking
+            );
+            GSLog.Info("TOWN: " + companyName + " delivered " + value.lastDeliveryAmount + " " + cargoName + " to " + townName + " (keep: " + keepTracking + ")");
+        }
+
+        foreach (key in keysToRemove) {
+            GSLog.Info("Deleting: " + key);
+            delete CargoTracker.trackedCargo[key];
+        }
+
+        GSLog.Info("Summary: " + keptCount + " kept, " + removedCount + " removed");
+        GSLog.Info("Remaining tracked items: " + CargoTracker.trackedCargo.len());
+        GSLog.Info("=== CargoTracker Update Complete ===");
+    }
+}

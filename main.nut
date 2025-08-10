@@ -126,13 +126,10 @@ function SupplyDemand::Start() {
             GSLog.Info(""); // Empty line between destinations
         }
         GSLog.Info("=== END DESTINATION ANALYSIS ===");
+
+        CargoTracker.update(lastRunDate);
     }
 }
-
-//GSCargoMonitor.GetTownDeliveryAmount(companyId, cargoType, townId, true)
-//GSCargoMonitor.GetIndustryDeliveryAmount(companyId, cargoType, industryId, true)
-//GSCargoMonitor.GetTownPickupAmount(companyId, cargoType, townId, true)
-//GSCargoMonitor.GetIndustryPickupAmount(companyId, cargoType, industryId, true)
 
 function trackDeliveries(origins) {
     local taskQueue = [];
@@ -211,18 +208,7 @@ function trackDeliveryHop(task, taskQueue) {
                 }
 
                 if (recipients.townIds) {
-                    foreach (townId in recipients.townIds) {
-                        addUnique(task.origin.destinationTownIds, townId)
-                    }
-
-                    addUnique(task.origin.originStationIds, task.originStationId);
-                    addUnique(task.origin.destinationStationIds, nextStationId);
-                    addUnique(task.origin.destinationCargoIds, task.cargoId);
-
-                    foreach (industryId in recipients.industryIds) {
-                        addUnique(task.origin.destinationIndustryIds, industryId);
-                    }
-
+                    registerDestination(task, recipients, nextStationId);
                     break;
                 }
 
