@@ -397,7 +397,7 @@ function calculateDemand() {
     }
 }
 
-function registerDestination(task, recipients, stationId) {
+function registerDestination(task, recipients, stationId, companyId) {
     foreach (townId in recipients.townIds) {
         addUnique(task.origin.destinationTownIds, townId);
     }
@@ -405,7 +405,6 @@ function registerDestination(task, recipients, stationId) {
     addUnique(task.origin.originStationIds, task.originStationId);
     addUnique(task.origin.destinationStationIds, stationId);
     addUnique(task.origin.destinationCargoIds, task.cargoId);
-    local companyId = GSStation.GetOwner(stationId);
 
     foreach (industryId in recipients.industryIds) {
         addUnique(task.origin.destinationIndustryIds, industryId);

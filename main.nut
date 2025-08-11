@@ -208,7 +208,8 @@ function trackDeliveryHop(task, taskQueue) {
                 }
 
                 if (recipients.townIds) {
-                    registerDestination(task, recipients, nextStationId);
+                    local companyId = GSVehicle.GetOwner(vehicleId);
+                    registerDestination(task, recipients, nextStationId, companyId);
                     break;
                 }
 
