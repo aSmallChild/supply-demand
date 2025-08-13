@@ -18,14 +18,13 @@ function SupplyDemand::Start() {
 
         local currentDate = GSDate.GetCurrentDate();
         if (nextRunDate > currentDate) {
-            // todo log and error if it's more than a month behind the games current date
             continue;
         }
         lastRunDate = nextRunDate;
         nextRunDate = getStartOfNextMonth(nextRunDate);
         GSLog.Info("");
         GSLog.Info("Running for month: " + formatDate(lastRunDate));
-
+        logIfBehindSchedule(lastRunDate, currentDate);
 //        local towns = GSTownList();
 //        foreach (townId, _ in towns) {
 ////            local received = GSTown.GetLastMonthReceived(townId, GSCargo::TownEffect towneffect_id)
@@ -142,7 +141,7 @@ function trackDeliveries(origins) {
     local processedStationCargos = {};
     while (taskQueue.len() > 0) {
         local task = taskQueue.pop();
-        local stationCargoKey = task.hopStationId + "_" + task.cargoId;
+        local stationCargoKey = task.hopStationId + "_" + task.cargoId + "_" + task.originStationId;
 
         if (stationCargoKey in processedStationCargos) {
             processedStationCargos[stationCargoKey].origins.append(task.origin);

@@ -89,6 +89,23 @@ function getStartOfNextMonth(date) {
     return GSDate.GetDate(year, month, 1);
 }
 
+function logIfBehindSchedule(lastRunDate, currentDate) {
+    local currentYear = GSDate.GetYear(currentDate);
+    local currentMonth = GSDate.GetMonth(currentDate);
+    local nextRunYear = GSDate.GetYear(lastRunDate);
+    local nextRunMonth = GSDate.GetMonth(lastRunDate);
+
+    local monthsBehind = (currentYear - nextRunYear) * 12 + (currentMonth - nextRunMonth);
+
+    if (monthsBehind > 1) {
+        GSLog.Error("Script is running " + monthsBehind + " months behind schedule!");
+        GSLog.Error("Current: " + formatDate(currentDate) + " vs Expected: " + formatDate(lastRunDate));
+        GSLog.Error("Consider increasing sleep time or optimizing script performance.");
+    } else if (monthsBehind > 0) {
+        GSLog.Warning("Script is " + monthsBehind + " month behind schedule.");
+    }
+}
+
 function getIndustryStations(industryId) {
     local stationCount = GSIndustry.GetAmountOfStationsAround(industryId);
     if (stationCount < 1) {
@@ -190,39 +207,6 @@ function stationCargoRecipients(stationId, cargoId) {
         nextCargoIds = nextCargoIds,
         nextIndustryIds = acceptingIndustries,
     };
-}
-
-function findNextUnloadStationInOrders(vehicleId, originStationId, cargoType) {
-    local orderCount = GSOrder.GetOrderCount(vehicleId);
-    local unloadStations = [];
-
-    local startOrderPositions = [];
-    for (local i = 0; i < orderCount; i++) {
-        local stationId = GSStation.GetStationID(GSOrder.GetOrderDestination(vehicleId, i));
-        if (stationId == originStationId && canLoad(GSOrder.GetOrderFlags(vehicleId, i))) {
-            startOrderPositions.append(i);
-        }
-    }
-
-    foreach (i, startPosition in startOrderPositions) {
-        for (local j = 1; j < orderCount; j++) {
-            local orderPosition = (startPosition + j) % orderCount;
-            local orderFlags = GSOrder.GetOrderFlags(vehicleId, orderPosition);
-
-            if (!canUnload(orderFlags)) {
-                continue;
-            }
-
-            local unloadStationId = GSStation.GetStationID(GSOrder.GetOrderDestination(vehicleId, orderPosition));
-            local acceptingIndustries = stationAcceptsCargo(unloadStationId, cargoType);
-            if (acceptingIndustries.len() > 0) {
-                unloadStations.append(unloadStationId);
-                break;
-            }
-        }
-    }
-
-    return unloadStations;
 }
 
 function findOriginIndustries(currentDate) {
