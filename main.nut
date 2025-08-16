@@ -23,7 +23,7 @@ function SupplyDemand::Start() {
         lastRunDate = nextRunDate;
         nextRunDate = getStartOfNextMonth(nextRunDate);
         GSLog.Info("");
-        GSLog.Info("Running for month: " + formatDate(lastRunDate));
+        GSLog.Info("Month: " + formatDate(lastRunDate) + ", started processing on " + formatDate(currentDate));
         logIfBehindSchedule(lastRunDate, currentDate);
 //        local towns = GSTownList();
 //        foreach (townId, _ in towns) {
@@ -47,9 +47,7 @@ function SupplyDemand::Start() {
 //
 //            }
 //        }
-        // todo end all monitoring on script start
-        // todo cache origins and destinations
-        // todo update cache every month, end monitoring on things removed from the cache
+        // todo store contents of caches when saving and loading game
 
         local origins = findOriginIndustries(currentDate);
         trackDeliveries(origins);
@@ -127,6 +125,9 @@ function SupplyDemand::Start() {
         GSLog.Info("=== END DESTINATION ANALYSIS ===");
 
         CargoTracker.update(lastRunDate);
+        processTowns();
+
+        GSLog.Info("Month: " + formatDate(lastRunDate) + " started on " + formatDate(currentDate) + " and finished processing on: " + formatDate(GSDate.GetCurrentDate()));
     }
 }
 
