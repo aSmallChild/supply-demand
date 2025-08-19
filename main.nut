@@ -1,4 +1,5 @@
 require("util.nut");
+require("cargo.nut");
 
 class SupplyDemand extends GSController {
     constructor() {
@@ -8,6 +9,7 @@ class SupplyDemand extends GSController {
 function SupplyDemand::Start() {
     local lastRunDate = GSDate.GetCurrentDate(); // todo save & load this from game state
     GSLog.Info("Script started, game date: " + formatDate(lastRunDate));
+    categorizeAllCargoTypes();
 
     local nextRunDate = getStartOfNextMonth(lastRunDate);
     while (true) {

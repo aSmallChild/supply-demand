@@ -102,7 +102,6 @@ function logIfBehindSchedule(lastRunDate, currentDate) {
     if (monthsBehind > 1) {
         GSLog.Error("Script is running " + monthsBehind + " months behind schedule!");
         GSLog.Error("Current: " + formatDate(currentDate) + " vs Expected: " + formatDate(lastRunDate));
-        GSLog.Error("Consider increasing sleep time or optimizing script performance.");
     } else if (monthsBehind > 0) {
         GSLog.Warning("Script is " + monthsBehind + " month behind schedule.");
     }
@@ -528,41 +527,28 @@ function buildTown(townId) {
 
 function analyzeTownCargo(townData) {
     local analysis = {
-        receivedCargoTypes = {},     // cargoId -> count
-        originCargoTypes = {},       // cargoId -> count
-        totalReceivedTypes = 0,
-        totalOriginTypes = 0,
         totalDeliveryAmount = 0,
-        totalOrigins = 0
+        categoryReceived = buildCategoryCargoTable(), // cargoId -> sum
+        categoryOrigins = buildCategoryCargoTable(), // cargoId -> true
+        categoryTotals = buildCategoryCargoTable(function () {return 0}),
     };
 
     foreach (key, delivery in townData.deliveredCargo) {
         local cargoId = delivery.cargoId;
         local amount = delivery.lastDeliveryAmount;
-
-        // Count received cargo types
-        if (!(cargoId in analysis.receivedCargoTypes)) {
-            analysis.receivedCargoTypes[cargoId] <- 0;
+        local category = getCargoCategory(cargoId);
+        if (!(cargoId in analysis.categoryReceived[category])) {
+            analysis.categoryReceived[category][cargoId] <- 0;
         }
-        analysis.receivedCargoTypes[cargoId] += amount;
         analysis.totalDeliveryAmount += amount;
+        analysis.categoryReceived[category][cargoId] += amount;
+        analysis.categoryTotals[category] += amount;
 
-        // Analyze origins for this delivery
         foreach (origin in delivery.origins) {
-            analysis.totalOrigins++;
-            local originCargoId = origin.cargoId;
-
-            // Count origin cargo types
-            if (!(originCargoId in analysis.originCargoTypes)) {
-                analysis.originCargoTypes[originCargoId] <- 0;
-            }
-            analysis.originCargoTypes[originCargoId] += 0; // todo
+            local originCategory = getCargoCategory(origin.cargoId);
+            analysis.categoryOrigins[originCategory][origin.cargoId] <- true;
         }
     }
-
-    // Count unique types
-    analysis.totalReceivedTypes = analysis.receivedCargoTypes.len();
-    analysis.totalOriginTypes = analysis.originCargoTypes.len();
 
     return analysis;
 }
