@@ -1,49 +1,55 @@
-enum CARGO_CATEGORIES {
-    SERVICE = "service",
-    ESSENTIAL = "essential",
-    INDUSTRIAL = "industrial"
+//enum CARGO_CATEGORIES {
+//    SERVICE = "service",
+//    ESSENTIAL = "essential",
+//    INDUSTRIAL = "industrial"
+//}
+
+class CargoCategories {
+    static SERVICE = "service";
+    static ESSENTIAL = "essential";
+    static INDUSTRIAL = "industrial";
 }
 
-class CARGO_CATEGORY {
-    MAP = {};
-    SETS = {};
+class CargoCategory {
+    map = {};
+    sets = {};
 }
 
 function categorizeAllCargoTypes() {
     local cargoList = GSCargoList();
     foreach (cargoId, _ in cargoList) {
         local category = buildCargoCategory(cargoId);
-        CARGO_CATEGORY.MAP[cargoId] <- category;
-        if (!(category in CARGO_CATEGORY.SETS)) {
-            CARGO_CATEGORY.SETS[category] <- {};
+        CargoCategory.map[cargoId] <- category;
+        if (!(category in CargoCategory.sets)) {
+            CargoCategory.sets[category] <- {};
         }
-        CARGO_CATEGORY.SETS[category][cargoId] <- true;
+        CargoCategory.sets[category][cargoId] <- true;
     }
 }
 
 function buildCargoCategory(cargoId) {
     if (GSCargo.HasCargoClass(cargoId, GSCargo.CC_MAIL) ||
         GSCargo.HasCargoClass(cargoId, GSCargo.CC_PASSENGERS)) {
-        return CARGO_CATEGORIES.SERVICE;
+        return CargoCategories.SERVICE;
     }
 
     local townEffect = GSCargo.GetTownEffect(cargoId);
     if (townEffect == GSCargo.TE_FOOD ||
         townEffect == GSCargo.TE_GOODS ||
         townEffect == GSCargo.TE_WATER) {
-        return CARGO_CATEGORIES.ESSENTIAL;
+        return CargoCategories.ESSENTIAL;
     }
 
-    return CARGO_CATEGORIES.INDUSTRIAL;
+    return CargoCategories.INDUSTRIAL;
 }
 
 function getCargoCategory(cargoId) {
-    return CARGO_CATEGORY.MAP[cargoId];
+    return CargoCategory.map[cargoId];
 }
 
 function buildCategoryCargoTable(initialValue = function () {return {}}) {
     local cargoTable = {};
-    foreach (cargoId, _ in CARGO_CATEGORY.SETS) {
+    foreach (cargoId, _ in CargoCategory.sets) {
         cargoTable[cargoId] <- initialValue();
     }
     return cargoTable;
