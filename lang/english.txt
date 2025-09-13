@@ -1,0 +1,20 @@
+﻿#STR_DUMMY		: basic english text file
+
+
+STR_TOWN_GROWTH_HEADER          :{WHITE}=== TOWN GROWTH: {TOWN} ==={}Population: {COMMA}{}
+STR_CARGO_CATEGORY_HEADER       :{GREEN}{STRING}:{WHITE}{}
+STR_CARGO_LINE                  :{RIGHTARROW} {CARGO} from: {STRING}{}
+STR_CARGO_LINE_NO_ORIGIN        :{RIGHTARROW} {CARGO}{}
+STR_GROWTH_COMPLETE            :=== GROWTH COMPLETE ===
+STR_EMPTY_LINE                 :{}
+
+STR_SEN_2     : DID {STRING} WITH A {STRING}{}
+STR_BLANK :
+STR_BLANK2 :{STRING}{STRING}
+STR_BLANK2_NL :{STRING}{STRING}{}
+STR_5_S2 :{STRING2}{STRING2}{STRING2}{STRING2}{STRING2}{STRING2}
+
+STR_TOWN_TEXT :Receiving {NUM}/3 categories{}
+
+
+STR_TOWN_CARGO_SUMMARY     :Last cycle fulfilled {COMMA} / {COMMA} categories{}Essentials: {COMMA} total, {COMMA} cargo types, {COMMA} sources{}Services: {COMMA} total, {COMMA} cargo types, {COMMA} sources{}Industrial: {COMMA} total, {COMMA} cargo types, {COMMA} sources

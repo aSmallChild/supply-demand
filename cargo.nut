@@ -5,8 +5,8 @@
 //}
 
 class CargoCategories {
-    static SERVICE = "service";
     static ESSENTIAL = "essential";
+    static SERVICE = "service";
     static INDUSTRIAL = "industrial";
 }
 
