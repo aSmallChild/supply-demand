@@ -17,4 +17,4 @@ STR_5_S2 :{STRING2}{STRING2}{STRING2}{STRING2}{STRING2}{STRING2}
 STR_TOWN_TEXT :Receiving {NUM}/3 categories{}
 
 
-STR_TOWN_CARGO_SUMMARY     :Last cycle fulfilled {COMMA} / {COMMA} categories{}Essentials: {COMMA} total, {COMMA} cargo types, {COMMA} sources{}Services: {COMMA} total, {COMMA} cargo types, {COMMA} sources{}Industrial: {COMMA} total, {COMMA} cargo types, {COMMA} sources
+STR_TOWN_CARGO_SUMMARY     :Last cycle fulfilled {COMMA} / {COMMA} categories{}Essentials: {COMMA} total cargo, {COMMA} fulfilled of {COMMA} cargo types from {COMMA} sources{}Services: {COMMA} total cargo, {COMMA} fulfilled of {COMMA} cargo types from {COMMA} sources{}Industrial: {COMMA} total cargo, {COMMA} fulfilled of {COMMA} cargo types from {COMMA} sources

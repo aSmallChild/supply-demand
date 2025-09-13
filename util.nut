@@ -355,7 +355,9 @@ function groupDestinationsAndOrigins(origins) {
                 }
                 destinations.append(destination);
             }
-            destination.originIndustryIds.append(origin.industryId);
+            if (origin.industryId) {
+                destination.originIndustryIds.append(origin.industryId);
+            }
             foreach (stationId in origin.destinationStationIds) {
                 addUnique(destination.destinationStationIds, stationId);
             }
@@ -415,7 +417,8 @@ class CargoTracker {
 
     static function linkOrigin(tracking, origin) {
         tracking.date = GSDate.GetCurrentDate();
-        tracking.origins[origin.industryId] <- origin;
+        local key = origin.industryId ? "i" + origin.industryId : "t" + origin.townId;
+        tracking.origins[key] <- origin;
         origin.destinationTracking.append(tracking);
         return tracking;
     }
@@ -443,8 +446,6 @@ class CargoTracker {
     }
 
     static function update(date) {
-        GSLog.Info("=== CargoTracker Update ===");
-        GSLog.Info("Update date: " + formatDate(date));
         GSLog.Info("Total tracked items: " + CargoTracker.trackedCargo.len());
 
         local keysToRemove = [];
@@ -594,7 +595,9 @@ function analyzeTownCargo(townData) {
         analysis.categoryReceived[category][cargoId] += amount;
         analysis.categoryTotals[category] += amount;
         foreach (origin in delivery.origins) {
-            analysis.originIndustryIds[cargoId][origin.industryId] <- true;
+            if (origin.industryId) {
+                analysis.originIndustryIds[cargoId][origin.industryId] <- true;
+            }
         }
 
         if (!(cargoId in analysis.cargoTotals)) {
@@ -613,8 +616,9 @@ function analyzeTownCargo(townData) {
 
     foreach (category in CargoCategories) {
         local score = {
+            totalCargo = 0,
             totalCargos = CargoCategory.sets[category].len(),
-            fulfilledCargos = 0,
+            fulfilledCargoIds = [],
             surplus = 0,
         }
         analysis.categoryScores[category] <- score;
@@ -625,7 +629,8 @@ function analyzeTownCargo(townData) {
             local amount = analysis.cargoTotals[cargoId];
             if (amount >= demand.target) {
                 score.surplus += amount - demand.target;
-                score.fulfilledCargos += 1;
+                score.totalCargo += amount;
+                score.fulfilledCargoIds.append(cargoId);
                 continue;
             }
             increaseSupply(townData, analysis, cargoId, demand.target - amount);
@@ -639,60 +644,57 @@ function processTown(townData) {
     local analysis = analyzeTownCargo(townData);
     local population = analysis.population;
     local demand = analysis.demand;
-    local categoryScores = analysis.categoryScores;
 
-    local essential = categoryScores[CargoCategories.ESSENTIAL];
+    local growthSnapshot = {
+        population = population,
+        totalSurplus = 0,
+        consumedCount = 0,
+    };
+
+    local essential = analysis.categoryScores[CargoCategories.ESSENTIAL];
     local fulfilledCategories = [];
-    foreach (category in categoryScores) {
-        if (category.fulfilledCargos >= category.totalCargos) {
+    foreach (category in analysis.categoryScores) {
+        if (category.fulfilledCargoIds.len() >= category.totalCargos) {
             fulfilledCategories.append(category);
         }
     }
 
-    if (essential.fulfilledCargos < essential.totalCargos || fulfilledCategories.len() < demand.categories) {
+    if (essential.fulfilledCargoIds.len() < essential.totalCargos || fulfilledCategories.len() < demand.categories) {
         return;
     }
-    return; // todo replace ready for growth with category scores
+
+    // function processCategory(growthSnapshot), consume cargo
+    // ignore services, they count toward hitting targets but
+    // process essentials
+    // process industrial
+    // todo replace ready for growth with category scores
     // todo trigger this at a regular interval, e.g. 6 months
     // todo allow stockpiling to trigger more rapidly if targets are met before the end of the 6 month cycle
+    // todo make it so having more fulfilled cargo types is better than just lots of just one
 
-    local growthSnapshot = {
-        population = population,
-        consumedCargo = {},
-        totalSurplus = 0
-    };
 
-    local consumedCount = 0;
-
-    foreach (cargoId, amount in readyForGrowth) {
-        local cargoName = GSCargo.GetName(cargoId);
-        growthSnapshot.consumedCargo[cargoId] <- {
-            name = cargoName,
-            amount = amount
-        };
-        growthSnapshot.totalSurplus += amount;
-        consumedCount++;
-
-        // todo reset all cargo, and expire old stuff that didn't make it
-        resetCargoAmount(townData, cargoId);
+    foreach (category, score in analysis.categoryScores) {
+        growthSnapshot.totalSurplus += score.surplus;
+        growthSnapshot.consumedCount += score.fulfilledCargoIds.len();
+        foreach (cargoId in score.fulfilledCargoIds) {
+            resetCargoAmount(townData, cargoId);
+        }
     }
 
-    // todo
     local townName = GSTown.GetName(townData.townId);
     local numberOfNewHouses = growthSnapshot.totalSurplus / 10;
-    GSLog.Info("=== TOWN GROWTH: " + townName + " (Pop: " + population + ") ===");
-    GSLog.Info("Consumed " + consumedCount + " cargo types, total: " + growthSnapshot.totalSurplus + " units");
-    foreach (cargoId, info in growthSnapshot.consumedCargo) {
-        GSLog.Info("  " + info.name + ": " + info.amount + " units");
-    }
-    GSLog.Info("Growing by " + numberOfNewHouses + " houses");
+    GSLog.Info("Growing town: " + townName + " (Pop: " + population + ") by " + numberOfNewHouses + " houses");
     GSTown.ExpandTown(townData.townId, numberOfNewHouses);
-    GSLog.Info("=== GROWTH COMPLETE ===");
-    GSTown.SetText(townData.townId, buildGrowthMessage(growthSnapshot, analysis, townData));
+    GSTown.SetText(townData.townId, buildGrowthMessage(growthSnapshot, analysis, townData, fulfilledCategories.len()));
 }
 
 function increaseSupply(townData, analysis, cargoId, shortage) {
-    // todo ignore services category, it's increasing passenger production at oil fields
+    if (CargoCategories.SERVICE == getCargoCategory(cargoId)) {
+        // service category is for passengers and mail which increasw with town growth
+        // there is an edge case with oil rigs which produce passengers
+        // oil rigs should scale based on oil not passengers
+        return;
+    }
     local targetDemand = analysis.demand.target;
     local currentSupply = analysis.cargoTotals[cargoId] || 0;
     local maxProduction = 128;
@@ -744,48 +746,24 @@ function resetCargoAmount(townData, cargoId) {
     }
 }
 
-function buildGrowthMessage(growthSnapshot, analysis, townData) {
+function buildGrowthMessage(growthSnapshot, analysis, townData, fulfilledCategories) {
     local categorizedCargo = buildCategoryCargoTable();
-
-    foreach (cargoId, info in growthSnapshot.consumedCargo) {
-        local category = getCargoCategory(cargoId);
-        categorizedCargo[category][cargoId] <- info;
-    }
-
-    local fulfilledCategories = 0;
-    local requiredCategories = 3;
-
-    local categoryStats = {};
-    foreach (category, cargos in categorizedCargo) {
-        local categoryTotal = 0;
-        local categoryCargoTypes = cargos.len();
-
-        foreach (cargoId, info in cargos) {
-            categoryTotal += info.amount;
-        }
-
-        if (categoryCargoTypes > 0) {
-            fulfilledCategories++;
-        }
-
-        categoryStats[category] <- {
-            total = categoryTotal,
-            cargoTypes = categoryCargoTypes,
-            origins = analysis.categoryOrigins[category].len()
-        };
-    }
-
     local message = GSText(GSText.STR_TOWN_CARGO_SUMMARY);
     message.AddParam(fulfilledCategories);
-    message.AddParam(requiredCategories);
-    message.AddParam(categoryStats[CargoCategories.ESSENTIAL].total);
-    message.AddParam(categoryStats[CargoCategories.ESSENTIAL].cargoTypes);
-    message.AddParam(categoryStats[CargoCategories.ESSENTIAL].origins);
-    message.AddParam(categoryStats[CargoCategories.SERVICE].total);
-    message.AddParam(categoryStats[CargoCategories.SERVICE].cargoTypes);
-    message.AddParam(categoryStats[CargoCategories.SERVICE].origins);
-    message.AddParam(categoryStats[CargoCategories.INDUSTRIAL].total);
-    message.AddParam(categoryStats[CargoCategories.INDUSTRIAL].cargoTypes);
-    message.AddParam(categoryStats[CargoCategories.INDUSTRIAL].origins);
+    message.AddParam(analysis.demand.categories);
+    foreach (category in CargoCategories) {
+        local score = analysis.categoryScores[category];
+        // todo category titles are in the wrong order
+        message.AddParam(score.totalCargo);
+        message.AddParam(score.fulfilledCargoIds.len());
+        message.AddParam(score.totalCargos);
+        message.AddParam(analysis.categoryOrigins[category].len());
+    }
+//    message.AddParam(analysis.categoryScores[CargoCategories.SERVICE].totalCargo);
+//    message.AddParam(categoryStats[CargoCategories.SERVICE].cargoTypes);
+//    message.AddParam(analysis.categoryOrigins[CargoCategories.SERVICE].len());
+//    message.AddParam(analysis.categoryScores[CargoCategories.INDUSTRIAL].totalCargo);
+//    message.AddParam(categoryStats[CargoCategories.INDUSTRIAL].cargoTypes);
+//    message.AddParam(analysis.categoryOrigins[CargoCategories.INDUSTRIAL].len());
     return message;
 }
