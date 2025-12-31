@@ -53,8 +53,7 @@ function SupplyDemand::Start() {
 
         local origins = findOriginIndustries(currentDate);
         trackDeliveries(origins);
-        local groups = groupDestinationsAndOrigins(origins);
-        origins = groups.origins;
+        groupDestinationsAndOrigins(origins);
 //        GSLog.Info(origins.len() + " origins found");
 //        foreach (i, origin in origins) {
 //            local industryName = GSIndustry.GetName(origin.industryId);
@@ -245,9 +244,3 @@ function trackDeliveryHop(task, taskQueue) {
         }
     }
 }
-
-
-// then see how much the town is receiving, and deterime how much it should grow
-    // add bonus growth if there was a surplus
-    // add bonus growth based on the number of origin cargo ids
-// then see if it received more than it needs and if not expand the origin industries so they can supply more

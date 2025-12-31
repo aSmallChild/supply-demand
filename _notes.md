@@ -117,7 +117,6 @@ Plan A
 
 - [x] when tracking cargo hops, keep origin station id that it started from
 - [x] when tracking to a destination in the hop tracking, add it as a confirmed station
-- [ ] also when tracking to a destination add origins to destinations???
 - [x] then destinations will have the correct mapping to use for cargo tracking, both from origins and to destinations
     - [x] to make that work it will need
         - [x] origins: stationId, industryId
@@ -157,3 +156,16 @@ Plan B (or step 2)
         - [ ] overall 7 produced, and 7 received
         - [ ] if demand is not met in town A, then industry A and B should scale up, starting with industry A since it that delivery route is not fully saturated with cargo
         - [ ] if demand is not met in town B, then industry A and C should scale up, starting with industry A since it that delivery route is not fully saturated with cargo
+
+    - require town effect cargos to allow growth
+    - non-town effect cargos accelerate growth
+    - default target town size: 50k
+    - a factory that has reached 64/128 of its production can fully satisfy a town of the target size 
+
+
+For each destination/town
+    - get population
+    - calculate number of required cargo types
+    - calculate amount of each type of cargo required
+    - determine how much cargo was received of each type of cargo
+    - break it down by town cargo or industrial cargo(coal, gold, diamonds, and valuables vs goods, food, and water)

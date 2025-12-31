@@ -247,11 +247,6 @@ function findOriginIndustries(currentDate) {
                 continue;
             }
 
-//            local label = GSCargo.GetCargoLabel(cargoType);
-//            if (label == "PASS" || label == "MAIL") {
-//                continue;
-//            }
-
             local acceptingStations = [];
             foreach (stationId in stations) {
                 if (GSStation.GetCargoRating(stationId, cargoType) < 1) {
@@ -521,42 +516,45 @@ function getTownCargoDemand(population) {
     local req = {
         categories = 1,
         target = 120,
-        maxGrowth = 100,
+        maxGrowth = 20,
     }
 
-    return req;
+    if (population < 1e4) {
+        return req;
+    }
 
-//    if (population < 1e4) {
-//        return req;
-//    }
-//
-//    if (population < 1e5) {
-//        req.categories = 2;
-//        req.target = 600;
-//        return req;
-//    }
-//
-//    if (population < 3e5) {
-//        req.categories = 2;
-//        req.target = 900;
-//        return req;
-//    }
-//
-//    if (population < 6e5) {
-//        req.categories = 2;
-//        req.target = 1200;
-//        return req;
-//    }
-//
-//    if (population < 9e5) {
-//        req.categories = 2;
-//        req.target = 1800;
-//        return req;
-//    }
-//
-//    req.categories = 3;
-//    req.target = 2400;
-//    return req;
+    if (population < 1e5) {
+        req.categories = 1;
+        req.target = 600;
+        req.maxGrowth = 40;
+        return req;
+    }
+
+    if (population < 3e5) {
+        req.categories = 2;
+        req.target = 900;
+        req.maxGrowth = 60;
+        return req;
+    }
+
+    if (population < 6e5) {
+        req.categories = 2;
+        req.target = 1200;
+        req.maxGrowth = 80;
+        return req;
+    }
+
+    if (population < 9e5) {
+        req.categories = 2;
+        req.target = 1800;
+        req.maxGrowth = 100;
+        return req;
+    }
+
+    req.categories = 3;
+    req.target = 2400;
+    req.maxGrowth = 125;
+    return req;
 }
 
 function analyzeTownCargo(townData) {
@@ -660,6 +658,7 @@ function processTown(townData) {
     }
 
     if (essential.fulfilledCargoIds.len() < essential.totalCargos || fulfilledCategories.len() < demand.categories) {
+        GSTown.SetText(townData.townId, buildGrowthMessage(growthSnapshot, analysis, townData, fulfilledCategories.len()));
         return;
     }
 
@@ -682,7 +681,7 @@ function processTown(townData) {
     }
 
     local townName = GSTown.GetName(townData.townId);
-    local numberOfNewHouses = growthSnapshot.totalSurplus / 10;
+    local numberOfNewHouses = min(growthSnapshot.totalSurplus / 10, demand.maxGrowth);
     GSLog.Info("Growing town: " + townName + " (Pop: " + population + ") by " + numberOfNewHouses + " houses");
     GSTown.ExpandTown(townData.townId, numberOfNewHouses);
     GSTown.SetText(townData.townId, buildGrowthMessage(growthSnapshot, analysis, townData, fulfilledCategories.len()));
@@ -712,6 +711,9 @@ function increaseSupply(townData, analysis, cargoId, shortage) {
             continue;
         }
         local transported = GSIndustry.GetLastMonthTransportedPercentage(industryId, cargoId);
+        if (transported < 70) {
+            continue;
+        }
         local growthPotential = maxProduction - productionLevel;
         local score = (transported * growthPotential) / 100;
 
@@ -732,8 +734,8 @@ function increaseSupply(townData, analysis, cargoId, shortage) {
 
     local industryName = GSIndustry.GetName(bestIndustry);
     local cargoName = GSCargo.GetName(cargoId);
-        GSLog.Info("Increased " + cargoName + " production at " + industryName +
-                  " to address shortage of " + shortage + " units");
+    GSLog.Info("Increased " + cargoName + " production at " + industryName +
+        " to address shortage of " + shortage + " units");
 
     return bestIndustry;
 }
@@ -748,22 +750,26 @@ function resetCargoAmount(townData, cargoId) {
 
 function buildGrowthMessage(growthSnapshot, analysis, townData, fulfilledCategories) {
     local categorizedCargo = buildCategoryCargoTable();
-    local message = GSText(GSText.STR_TOWN_CARGO_SUMMARY);
-    message.AddParam(fulfilledCategories);
-    message.AddParam(analysis.demand.categories);
-    foreach (category in CargoCategories) {
+    local message = GSText(GSText.STR_TOWN_SUMMARY);
+    message.AddParam(fulfilledCategories + "/" + analysis.demand.categories);
+    message.AddParam(analysis.demand.target);
+    message.AddParam(analysis.demand.maxGrowth);
+
+    foreach (key, category in CargoCategories) {
         local score = analysis.categoryScores[category];
-        // todo category titles are in the wrong order
-        message.AddParam(score.totalCargo);
-        message.AddParam(score.fulfilledCargoIds.len());
-        message.AddParam(score.totalCargos);
-        message.AddParam(analysis.categoryOrigins[category].len());
+        local categoryLine = GSText(GSText["STR_TOWN_" + key + "_LINE"]);
+        categoryLine.AddParam(score.totalCargo);
+        categoryLine.AddParam(analysis.categoryOrigins[category].len());
+        local cargoList = "";
+        foreach (cargoId, _ in CargoCategory.sets[category]) {
+            if (!(cargoId in analysis.cargoTotals) || !analysis.cargoTotals[cargoId]) {
+                continue;
+            }
+            local amount = analysis.cargoTotals[cargoId];
+            cargoList += (cargoList != "" ? ", " : "") + GSCargo.GetName(cargoId) + ": " + amount;
+        }
+        categoryLine.AddParam(score.fulfilledCargoIds.len() + "/" + score.totalCargos + (cargoList != "" ? " - " + cargoList : ""));
+        message.AddParam(categoryLine);
     }
-//    message.AddParam(analysis.categoryScores[CargoCategories.SERVICE].totalCargo);
-//    message.AddParam(categoryStats[CargoCategories.SERVICE].cargoTypes);
-//    message.AddParam(analysis.categoryOrigins[CargoCategories.SERVICE].len());
-//    message.AddParam(analysis.categoryScores[CargoCategories.INDUSTRIAL].totalCargo);
-//    message.AddParam(categoryStats[CargoCategories.INDUSTRIAL].cargoTypes);
-//    message.AddParam(analysis.categoryOrigins[CargoCategories.INDUSTRIAL].len());
     return message;
 }
