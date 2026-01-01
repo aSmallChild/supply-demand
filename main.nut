@@ -18,7 +18,6 @@ function SupplyDemand::Start() {
         if (GSGame.IsPaused()) {
             continue;
         }
-
         local currentDate = GSDate.GetCurrentDate();
         if (nextRunDate > currentDate) {
             continue;
@@ -32,93 +31,6 @@ function SupplyDemand::Start() {
 
         local origins = findOrigins(currentDate);
         trackDeliveries(origins);
-        groupDestinationsAndOrigins(origins);
-//        GSLog.Info(origins.len() + " origins found");
-//        foreach (i, origin in origins) {
-//            local industryName = GSIndustry.GetName(origin.industryId);
-//            local cargoName = GSCargo.GetName(origin.cargoId);
-//            local townList = "";
-//            foreach (j, townId in origin.destinationTownIds) {
-//                local townName = GSTown.GetName(townId);
-//                townList += (townList ? "" : ", ") + GSTown.GetName(townId);
-//            }
-//            townList += ".";
-//            GSLog.Info("#" + (i + 1) + " raw " + cargoName + " from " + industryName + " feeds " + origin.destinationTownIds.len() + " town(s): " + townList);
-//        }
-//
-//        local destinations = groups.destinations;
-//        GSLog.Info("=== DESTINATION ANALYSIS ===");
-//        GSLog.Info("Found " + destinations.len() + " destinations");
-//        GSLog.Info("");
-
-//        foreach (i, destination in destinations) {
-//            local townName = GSTown.GetName(destination.townId);
-//            GSLog.Info("Destination #" + (i + 1) + ": " + townName);
-//            GSLog.Info("  Received cargo: " + destination.receivedCargo);
-//
-//            // Origin industries
-//            if (destination.originIndustryIds.len() == 0) {
-//                GSLog.Info("  Origin industries: (none)");
-//            } else {
-//                GSLog.Info("  Origin industries (" + destination.originIndustryIds.len() + "):");
-//                foreach (j, industryId in destination.originIndustryIds) {
-//                    local industryName = GSIndustry.GetName(industryId);
-//                    GSLog.Info("    " + (j + 1) + ". " + industryName + " (ID: " + industryId + ")");
-////                    GSIndustry.GetLastMonthTransportedPercentage(industryId, cargo_type) ??
-//                    local productionLevel = GSIndustry.GetProductionLevel(industryId);
-//                    productionLevel += 2;
-//                    if (productionLevel > 128) {
-//                        productionLevel = 128;
-//                    }
-////                    GSIndustry.SetProductionLevel(industryId, productionLevel, false, "");
-//                    GSIndustry.SetProductionLevel(industryId, 128, false, "");
-//                    foreach (cargoType, _ in GSIndustryType.GetProducedCargo(GSIndustry.GetIndustryType(industryId))) {
-//                        local prod = GSIndustry.GetLastMonthProduction(industryId, cargoType);
-//                        local cargoName = GSCargo.GetName(cargoType);
-//                        GSLog.Info("        Produced " + prod + " " + cargoName);
-//                    }
-//                    // 540 cargo from level 64
-//                    // 1080 cargo from level 128
-//                }
-//            }
-//
-//            // Destination stations
-//            if (destination.destinationStationIds.len() == 0) {
-//                GSLog.Info("  Destination stations: (none)");
-//            } else {
-//                GSLog.Info("  Destination stations (" + destination.destinationStationIds.len() + "):");
-//                foreach (j, stationId in destination.destinationStationIds) {
-//                    local stationName = GSStation.GetName(stationId);
-//                    GSLog.Info("    " + (j + 1) + ". " + stationName);
-//                }
-//            }
-//
-//            // Destination industries
-//            if (destination.destinationIndustryIds.len() == 0) {
-//                GSLog.Info("  Destination industries: (none)");
-//            } else {
-//                GSLog.Info("  Destination industries (" + destination.destinationIndustryIds.len() + "):");
-//                foreach (j, industryId in destination.destinationIndustryIds) {
-//                    local industryName = GSIndustry.GetName(industryId);
-//                    GSLog.Info("    " + (j + 1) + ". " + industryName);
-//                }
-//            }
-//
-//            // Destination cargo types
-//            if (destination.destinationCargoIds.len() == 0) {
-//                GSLog.Info("  Destination cargo types: (none)");
-//            } else {
-//                GSLog.Info("  Destination cargo types (" + destination.destinationCargoIds.len() + "):");
-//                foreach (j, cargoId in destination.destinationCargoIds) {
-//                    local cargoName = GSCargo.GetName(cargoId);
-//                    GSLog.Info("    " + (j + 1) + ". " + cargoName);
-//                }
-//            }
-//
-//            GSLog.Info(""); // Empty line between destinations
-//        }
-//        GSLog.Info("=== END DESTINATION ANALYSIS ===");
-
         CargoTracker.update(lastRunDate);
         processTowns();
 

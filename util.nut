@@ -388,53 +388,6 @@ function addTask(taskQueue, origin, hopStationId, cargoId, originStationId) {
     });
 }
 
-function groupDestinationsAndOrigins(origins) {
-    local prunedOrigins = [];
-    local destinations = [];
-    foreach (origin in origins) {
-        if (!origin.originStationIds.len()) {
-            continue;
-        }
-        prunedOrigins.append(origin);
-//        foreach (townId in origin.destinationTownIds) {
-//            local destination = null;
-//            foreach (existingDestination in destinations) {
-//                if (existingDestination.townId == townId) {
-//                    destination = existingDestination;
-//                    break;
-//                }
-//            }
-//            if (!destination) {
-//                destination = {
-//                    townId = townId,
-//                    originIndustryIds = [],
-//                    destinationStationIds = [],
-//                    destinationIndustryIds = [],
-//                    destinationCargoIds = [],
-//                    receivedCargo = 0,
-//                }
-//                destinations.append(destination);
-//            }
-//            if (origin.industryId) {
-//                destination.originIndustryIds.append(origin.industryId);
-//            }
-//            foreach (stationId in origin.destinationStationIds) {
-//                addUnique(destination.destinationStationIds, stationId);
-//            }
-//            foreach (cargo in origin.destinationCargoIds) {
-//                addUnique(destination.destinationCargoIds, cargo);
-//            }
-//            foreach (industryId in origin.destinationIndustryIds) {
-//                addUnique(destination.destinationIndustryIds, industryId);
-//            }
-//        }
-    }
-    return {
-        origins = prunedOrigins,
-//        destinations = destinations
-    };
-}
-
 function registerDestination(task, recipients, stationId, companyId) {
     foreach (townId in recipients.townIds) {
         addUnique(task.origin.destinationTownIds, townId);
@@ -515,15 +468,12 @@ class CargoTracker {
         foreach (key, value in CargoTracker.trackedCargo) {
             local keepTracking = value.date >= date;
             if (!keepTracking) {
-//                GSLog.Info("REMOVING: " + key + " (date: " + formatDate(value.date) + " < " + formatDate(date) + ")");
                 keysToRemove.append(key);
                 removedCount++;
             } else {
                 keptCount++;
             }
 
-//            local cargoName = GSCargo.GetName(value.cargoId);
-//            local companyName = GSCompany.GetName(value.companyId);
             if (value.industryId) {
                 value.cargoReceived += GSCargoMonitor.GetIndustryDeliveryAmount(
                 value.companyId,
@@ -531,10 +481,6 @@ class CargoTracker {
                     value.industryId,
                     keepTracking
                 );
-//                if (value.cargoReceived) {
-//                    local industryName = GSIndustry.GetName(value.industryId);
-//                    GSLog.Info("INDUSTRY: " + companyName + " delivered " + value.cargoReceived + " " + cargoName + " to " + industryName + " (keep: " + keepTracking + ")");
-//                }
                 continue;
             }
 
@@ -544,23 +490,14 @@ class CargoTracker {
                 value.townId,
                 keepTracking
             );
-//            if (value.cargoReceived) {
-//                local townName = GSTown.GetName(value.townId);
-//                GSLog.Info("TOWN: " + companyName + " delivered " + value.cargoReceived + " " + cargoName + " to " + townName + " (keep: " + keepTracking + ")");
-//            }
         }
 
         foreach (key in keysToRemove) {
-//            GSLog.Info("Deleting: " + key);
             local trackedCargo = CargoTracker.trackedCargo[key];
             local town = CargoTracker.towns[trackedCargo.townId];
             delete town.deliveredCargo[key];
             delete CargoTracker.trackedCargo[key];
         }
-
-//        GSLog.Info("Summary: " + keptCount + " kept, " + removedCount + " removed");
-//        GSLog.Info("Remaining tracked items: " + CargoTracker.trackedCargo.len());
-//        GSLog.Info("=== CargoTracker Update Complete ===");
     }
 }
 
@@ -846,7 +783,7 @@ function buildGrowthMessage(growthSnapshot, analysis, townData, fulfilledCategor
         local score = analysis.categoryScores[category];
         local categoryLine = GSText(GSText["STR_TOWN_" + category + "_LINE"]);
         categoryLine.AddParam(score.totalCargo);
-        categoryLine.AddParam(analysis.categoryOrigins[category].len()); // todo build a set of townIds and industryIds then count
+        categoryLine.AddParam(analysis.categoryOrigins[category].len());
         local cargoList = "";
         foreach (cargoId, _ in CargoCategory.sets[category]) {
             if (!(cargoId in analysis.cargoTotals) || !analysis.cargoTotals[cargoId]) {
