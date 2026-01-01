@@ -168,6 +168,9 @@ function stationCargoRecipients(stationId, cargoId) {
     local coverageTiles = GSTileList_StationCoverage(stationId);
     foreach (tile, _ in coverageTiles) {
         local industryId = GSIndustry.GetIndustryID(tile);
+        if (!GSIndustry.IsValidIndustry(industryId)) {
+            continue;
+        }
         if (listContains(acceptingIndustries, industryId) || GSIndustry.IsCargoAccepted(industryId, cargoId) != GSIndustry.CAS_ACCEPTED) {
             continue;
         }
@@ -481,7 +484,7 @@ class CargoTracker {
     }
 
     static function buildParams(key, companyId, cargoId, townId, industryId) {
-        if (!townId) {
+        if (townId == null) {
             townId = getTownIdFromIndustryId(industryId);
         }
         if (!(townId in CargoTracker.towns)) {
@@ -732,6 +735,9 @@ function processTown(townData) {
         growTown(growthSnapshot, analysis, townData, fulfilledCategories);
     }
 
+    if (growthSnapshot.numberOfNewHouses < 1) {
+        return;
+    }
     local townName = GSTown.GetName(townData.townId);
     GSLog.Info("Growing town: " + townName + " (Pop: " + analysis.population + ") by " + growthSnapshot.numberOfNewHouses + " houses");
     GSTown.ExpandTown(townData.townId, growthSnapshot.numberOfNewHouses);
@@ -740,13 +746,12 @@ function processTown(townData) {
 }
 
 function growTierZeroTown(growthSnapshot, analysis, townData, fulfilledCategories) {
-    local demand = analysis.demand;
     foreach (category, score in analysis.categoryScores) {
         foreach (cargoId in score.fulfilledCargoIds) {
             resetCargoAmount(townData, cargoId);
         }
     }
-    growthSnapshot.numberOfNewHouses = demand.maxGrowth * growthSnapshot.fulfilledCargoTypes / growthSnapshot.totalCargoTypes;
+    growthSnapshot.numberOfNewHouses = analysis.demand.maxGrowth * growthSnapshot.fulfilledCargoTypes / growthSnapshot.totalCargoTypes;
 }
 
 function growTown(growthSnapshot, analysis, townData, fulfilledCategories) {
@@ -757,7 +762,7 @@ function growTown(growthSnapshot, analysis, townData, fulfilledCategories) {
             resetCargoAmount(townData, cargoId);
         }
     }
-    growthSnapshot.numberOfNewHouses = demand.maxGrowth * fulfilledCategories.len() / CargoCategory.getTotalCategories();
+    growthSnapshot.numberOfNewHouses = analysis.demand.maxGrowth * fulfilledCategories.len() / CargoCategory.getTotalCategories();
 }
 
 function increaseSupply(townData, analysis, cargoId, shortage) {
@@ -794,7 +799,7 @@ function increaseSupply(townData, analysis, cargoId, shortage) {
             total++;
         }
         transported = transported / total;
-        if (transported < 70) {
+        if (transported < 67) {
             continue;
         }
         local growthPotential = maxProduction - productionLevel;
@@ -841,7 +846,7 @@ function buildGrowthMessage(growthSnapshot, analysis, townData, fulfilledCategor
         local score = analysis.categoryScores[category];
         local categoryLine = GSText(GSText["STR_TOWN_" + category + "_LINE"]);
         categoryLine.AddParam(score.totalCargo);
-        categoryLine.AddParam(analysis.categoryOrigins[category].len());
+        categoryLine.AddParam(analysis.categoryOrigins[category].len()); // todo build a set of townIds and industryIds then count
         local cargoList = "";
         foreach (cargoId, _ in CargoCategory.sets[category]) {
             if (!(cargoId in analysis.cargoTotals) || !analysis.cargoTotals[cargoId]) {
