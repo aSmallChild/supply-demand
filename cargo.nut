@@ -10,7 +10,8 @@ class CargoCategories {
     static INDUSTRIAL = "industrial";
 }
 
-class CargoCategory {
+class CargoCategoryCache {
+    total = 3;
     map = {};
     sets = {};
 }
@@ -18,16 +19,16 @@ class CargoCategory {
 function categorizeAllCargoTypes() {
     local cargoList = GSCargoList();
     foreach (cargoId, _ in cargoList) {
-        local category = buildCargoCategory(cargoId);
-        CargoCategory.map[cargoId] <- category;
-        if (!(category in CargoCategory.sets)) {
-            CargoCategory.sets[category] <- {};
+        local category = getActualCargoCategory(cargoId);
+        CargoCategoryCache.map[cargoId] <- category;
+        if (!(category in CargoCategoryCache.sets)) {
+            CargoCategoryCache.sets[category] <- {};
         }
-        CargoCategory.sets[category][cargoId] <- true;
+        CargoCategoryCache.sets[category][cargoId] <- true;
     }
 }
 
-function buildCargoCategory(cargoId) {
+function getActualCargoCategory(cargoId) {
     if (GSCargo.HasCargoClass(cargoId, GSCargo.CC_MAIL) ||
         GSCargo.HasCargoClass(cargoId, GSCargo.CC_PASSENGERS)) {
         return CargoCategories.SERVICE;
@@ -44,12 +45,12 @@ function buildCargoCategory(cargoId) {
 }
 
 function getCargoCategory(cargoId) {
-    return CargoCategory.map[cargoId];
+    return CargoCategoryCache.map[cargoId];
 }
 
 function buildCategoryCargoTable(initialValue = function () {return {}}) {
     local cargoTable = {};
-    foreach (cargoId, _ in CargoCategory.sets) {
+    foreach (cargoId, _ in CargoCategoryCache.sets) {
         cargoTable[cargoId] <- initialValue();
     }
     return cargoTable;

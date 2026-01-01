@@ -81,9 +81,13 @@ function formatDate(date) {
     return GSDate.GetYear(date) + "-" + (month < 10 ? "0" : "") + month + "-" + (day < 10 ? "0" : "") + day;
 }
 
-function getStartOfNextMonth(date) {
+function getStartOfNextMonth(date, increment) {
     local year = GSDate.GetYear(date);
-    local month = GSDate.GetMonth(date) + 1;
+    local month = GSDate.GetMonth(date) + increment % 12;
+    if (increment > 12) {
+        year += increment / 12;
+    }
+
     if (month > 12) {
         month = 1;
         year++;
@@ -330,43 +334,42 @@ function groupDestinationsAndOrigins(origins) {
             continue;
         }
         prunedOrigins.append(origin);
-        foreach (townId in origin.destinationTownIds) {
-            local destination = null;
-            foreach (existingDestination in destinations) {
-                if (existingDestination.townId == townId) {
-                    destination = existingDestination;
-                    break;
-                }
-            }
-            if (!destination) {
-                // todo phase out destinations, they are only used for logging purposes
-                destination = {
-                    townId = townId,
-                    originIndustryIds = [], // todo remove this
-                    destinationStationIds = [], // todo remove this
-                    destinationIndustryIds = [], // todo remove this
-                    destinationCargoIds = [], // todo remove this
-                    receivedCargo = 0, // todo remove this
-                }
-                destinations.append(destination);
-            }
-            if (origin.industryId) {
-                destination.originIndustryIds.append(origin.industryId);
-            }
-            foreach (stationId in origin.destinationStationIds) {
-                addUnique(destination.destinationStationIds, stationId);
-            }
-            foreach (cargo in origin.destinationCargoIds) {
-                addUnique(destination.destinationCargoIds, cargo);
-            }
-            foreach (industryId in origin.destinationIndustryIds) {
-                addUnique(destination.destinationIndustryIds, industryId);
-            }
-        }
+//        foreach (townId in origin.destinationTownIds) {
+//            local destination = null;
+//            foreach (existingDestination in destinations) {
+//                if (existingDestination.townId == townId) {
+//                    destination = existingDestination;
+//                    break;
+//                }
+//            }
+//            if (!destination) {
+//                destination = {
+//                    townId = townId,
+//                    originIndustryIds = [],
+//                    destinationStationIds = [],
+//                    destinationIndustryIds = [],
+//                    destinationCargoIds = [],
+//                    receivedCargo = 0,
+//                }
+//                destinations.append(destination);
+//            }
+//            if (origin.industryId) {
+//                destination.originIndustryIds.append(origin.industryId);
+//            }
+//            foreach (stationId in origin.destinationStationIds) {
+//                addUnique(destination.destinationStationIds, stationId);
+//            }
+//            foreach (cargo in origin.destinationCargoIds) {
+//                addUnique(destination.destinationCargoIds, cargo);
+//            }
+//            foreach (industryId in origin.destinationIndustryIds) {
+//                addUnique(destination.destinationIndustryIds, industryId);
+//            }
+//        }
     }
     return {
         origins = prunedOrigins,
-        destinations = destinations
+//        destinations = destinations
     };
 }
 
@@ -515,8 +518,8 @@ function buildTown(townId) {
 function getTownCargoDemand(population) {
     local req = {
         categories = 1,
-        target = 120,
-        maxGrowth = 20,
+        target = 100 * SupplyDemand.runIntervalMonths,
+        maxGrowth = 25 * SupplyDemand.runIntervalMonths,
     }
 
     if (population < 1e4) {
@@ -525,35 +528,35 @@ function getTownCargoDemand(population) {
 
     if (population < 1e5) {
         req.categories = 1;
-        req.target = 600;
-        req.maxGrowth = 40;
+        req.target = 200 * SupplyDemand.runIntervalMonths;
+        req.maxGrowth = 50 * SupplyDemand.runIntervalMonths;
         return req;
     }
 
     if (population < 3e5) {
         req.categories = 2;
-        req.target = 900;
-        req.maxGrowth = 60;
+        req.target = 400 * SupplyDemand.runIntervalMonths;
+        req.maxGrowth = 75 * SupplyDemand.runIntervalMonths;
         return req;
     }
 
     if (population < 6e5) {
         req.categories = 2;
-        req.target = 1200;
-        req.maxGrowth = 80;
+        req.target = 800 * SupplyDemand.runIntervalMonths;
+        req.maxGrowth = 100 * SupplyDemand.runIntervalMonths;
         return req;
     }
 
-    if (population < 9e5) {
+    if (population < 1e6) {
         req.categories = 2;
-        req.target = 1800;
-        req.maxGrowth = 100;
+        req.target = 1200 * SupplyDemand.runIntervalMonths;
+        req.maxGrowth = 125 * SupplyDemand.runIntervalMonths;
         return req;
     }
 
     req.categories = 3;
-    req.target = 2400;
-    req.maxGrowth = 125;
+    req.target = 2400 * SupplyDemand.runIntervalMonths;
+    req.maxGrowth = 250 * SupplyDemand.runIntervalMonths;
     return req;
 }
 
@@ -615,12 +618,12 @@ function analyzeTownCargo(townData) {
     foreach (category in CargoCategories) {
         local score = {
             totalCargo = 0,
-            totalCargos = CargoCategory.sets[category].len(),
+            totalCargos = CargoCategoryCache.sets[category].len(),
             fulfilledCargoIds = [],
             surplus = 0,
         }
         analysis.categoryScores[category] <- score;
-        foreach (cargoId, _ in CargoCategory.sets[category]) {
+        foreach (cargoId, _ in CargoCategoryCache.sets[category]) {
             if (!(cargoId in analysis.cargoTotals) || !analysis.cargoTotals[cargoId]) {
                 continue;
             }
@@ -647,6 +650,7 @@ function processTown(townData) {
         population = population,
         totalSurplus = 0,
         consumedCount = 0,
+        numberOfNewHouses = 0,
     };
 
     local essential = analysis.categoryScores[CargoCategories.ESSENTIAL];
@@ -669,7 +673,6 @@ function processTown(townData) {
     // todo replace ready for growth with category scores
     // todo trigger this at a regular interval, e.g. 6 months
     // todo allow stockpiling to trigger more rapidly if targets are met before the end of the 6 month cycle
-    // todo make it so having more fulfilled cargo types is better than just lots of just one
 
 
     foreach (category, score in analysis.categoryScores) {
@@ -681,9 +684,10 @@ function processTown(townData) {
     }
 
     local townName = GSTown.GetName(townData.townId);
-    local numberOfNewHouses = min(growthSnapshot.totalSurplus / 10, demand.maxGrowth);
-    GSLog.Info("Growing town: " + townName + " (Pop: " + population + ") by " + numberOfNewHouses + " houses");
-    GSTown.ExpandTown(townData.townId, numberOfNewHouses);
+    growthSnapshot.numberOfNewHouses = demand.maxGrowth * fulfilledCategories.len() / CargoCategoryCache.total;
+    GSLog.Info("Growing town: " + townName + " (Pop: " + population + ") by " + growthSnapshot.numberOfNewHouses + " houses");
+    GSTown.ExpandTown(townData.townId, growthSnapshot.numberOfNewHouses);
+    GSTown.SetGrowthRate(townData.townId, GSTown.TOWN_GROWTH_NONE);
     GSTown.SetText(townData.townId, buildGrowthMessage(growthSnapshot, analysis, townData, fulfilledCategories.len()));
 }
 
@@ -734,8 +738,7 @@ function increaseSupply(townData, analysis, cargoId, shortage) {
 
     local industryName = GSIndustry.GetName(bestIndustry);
     local cargoName = GSCargo.GetName(cargoId);
-    GSLog.Info("Increased " + cargoName + " production at " + industryName +
-        " to address shortage of " + shortage + " units");
+    GSLog.Info("Increased " + cargoName + " production at " + industryName + " to address shortage of " + shortage + " units");
 
     return bestIndustry;
 }
@@ -753,7 +756,7 @@ function buildGrowthMessage(growthSnapshot, analysis, townData, fulfilledCategor
     local message = GSText(GSText.STR_TOWN_SUMMARY);
     message.AddParam(fulfilledCategories + "/" + analysis.demand.categories);
     message.AddParam(analysis.demand.target);
-    message.AddParam(analysis.demand.maxGrowth);
+    message.AddParam(growthSnapshot.numberOfNewHouses + "/" + analysis.demand.maxGrowth);
 
     foreach (key, category in CargoCategories) {
         local score = analysis.categoryScores[category];
@@ -761,7 +764,7 @@ function buildGrowthMessage(growthSnapshot, analysis, townData, fulfilledCategor
         categoryLine.AddParam(score.totalCargo);
         categoryLine.AddParam(analysis.categoryOrigins[category].len());
         local cargoList = "";
-        foreach (cargoId, _ in CargoCategory.sets[category]) {
+        foreach (cargoId, _ in CargoCategoryCache.sets[category]) {
             if (!(cargoId in analysis.cargoTotals) || !analysis.cargoTotals[cargoId]) {
                 continue;
             }

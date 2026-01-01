@@ -2,6 +2,7 @@ require("util.nut");
 require("cargo.nut");
 
 class SupplyDemand extends GSController {
+    static runIntervalMonths = 3;
     constructor() {
     }
 }
@@ -11,7 +12,7 @@ function SupplyDemand::Start() {
     GSLog.Info("Script started, game date: " + formatDate(lastRunDate));
     categorizeAllCargoTypes();
 
-    local nextRunDate = getStartOfNextMonth(lastRunDate);
+    local nextRunDate = getStartOfNextMonth(lastRunDate, SupplyDemand.runIntervalMonths);
     while (true) {
         this.Sleep(74 * 3) // 3 days
         if (GSGame.IsPaused()) {
@@ -23,7 +24,7 @@ function SupplyDemand::Start() {
             continue;
         }
         lastRunDate = nextRunDate;
-        nextRunDate = getStartOfNextMonth(nextRunDate);
+        nextRunDate = getStartOfNextMonth(nextRunDate, SupplyDemand.runIntervalMonths);
         GSLog.Info("");
         GSLog.Info("Month: " + formatDate(lastRunDate) + ", started processing on " + formatDate(currentDate));
         logIfBehindSchedule(lastRunDate, currentDate);
