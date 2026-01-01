@@ -4,17 +4,22 @@
 //    INDUSTRIAL = "industrial"
 //}
 
-class CargoCategories {
-    static ESSENTIAL = "essential";
-    static SERVICE = "service";
-    static INDUSTRIAL = "industrial";
-}
-
-class CargoCategoryCache {
-    total = 3;
+class CargoCategory {
+    ESSENTIAL = "ESSENTIAL";
+    SERVICE = "SERVICE";
+    INDUSTRIAL = "INDUSTRIAL";
+    order = [
+        "ESSENTIAL",
+        "SERVICE",
+        "INDUSTRIAL",
+    ];
     map = {};
     sets = {};
     townCargoTypes = {};
+
+    static function getTotalCategories() {
+        return CargoCategory.order.len();
+    }
 }
 
 function categorizeAllCargoTypes() {
@@ -22,13 +27,13 @@ function categorizeAllCargoTypes() {
     foreach (cargoId, _ in cargoList) {
         local townEffect = GSCargo.GetTownEffect(cargoId);
         local category = getActualCargoCategory(cargoId, townEffect);
-        CargoCategoryCache.map[cargoId] <- category;
-        if (!(category in CargoCategoryCache.sets)) {
-            CargoCategoryCache.sets[category] <- {};
+        CargoCategory.map[cargoId] <- category;
+        if (!(category in CargoCategory.sets)) {
+            CargoCategory.sets[category] <- {};
         }
-        CargoCategoryCache.sets[category][cargoId] <- true;
+        CargoCategory.sets[category][cargoId] <- true;
         if (isTownCargo(townEffect)) {
-            CargoCategoryCache.townCargoTypes[cargoId] <- true;
+            CargoCategory.townCargoTypes[cargoId] <- true;
         }
     }
 }
@@ -37,14 +42,14 @@ function getActualCargoCategory(cargoId, townEffect) {
     if (townEffect == GSCargo.TE_FOOD ||
         townEffect == GSCargo.TE_GOODS ||
         townEffect == GSCargo.TE_WATER) {
-        return CargoCategories.ESSENTIAL;
+        return CargoCategory.ESSENTIAL;
     }
 
     if (isTownCargo(townEffect) || GSCargo.GetDistributionType(cargoId) == GSCargo.DT_SYMMETRIC) {
-        return CargoCategories.SERVICE;
+        return CargoCategory.SERVICE;
     }
 
-    return CargoCategories.INDUSTRIAL;
+    return CargoCategory.INDUSTRIAL;
 }
 
 function isTownCargo(townEffect) {
@@ -52,12 +57,12 @@ function isTownCargo(townEffect) {
 }
 
 function getCargoCategory(cargoId) {
-    return CargoCategoryCache.map[cargoId];
+    return CargoCategory.map[cargoId];
 }
 
 function buildCategoryCargoTable(initialValue = function () {return {}}) {
     local cargoTable = {};
-    foreach (cargoId, _ in CargoCategoryCache.sets) {
+    foreach (cargoId, _ in CargoCategory.sets) {
         cargoTable[cargoId] <- initialValue();
     }
     return cargoTable;
