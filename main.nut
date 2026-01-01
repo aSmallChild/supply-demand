@@ -28,31 +28,9 @@ function SupplyDemand::Start() {
         GSLog.Info("");
         GSLog.Info("Month: " + formatDate(lastRunDate) + ", started processing on " + formatDate(currentDate));
         logIfBehindSchedule(lastRunDate, currentDate);
-//        local towns = GSTownList();
-//        foreach (townId, _ in towns) {
-////            local received = GSTown.GetLastMonthReceived(townId, GSCargo::TownEffect towneffect_id)
-//            foreach (cargoType, _ in cargoTypes) {
-//                local supplied = GSTown.GetLastMonthSupplied(townId, cargoType);
-//                if (supplied < 1) {
-//                    continue;
-//                }
-//                local production = GSTown.GetLastMonthProduction(townId, cargoType);
-////                if (production) {
-////                    local townName = GSTown.GetName(townId);
-////                    local cargoName = GSCargo.GetName(cargoType);
-////                    GSLog.Info(townName + " produced " + production + " " + cargoName)
-////                }
-//                if (supplied) {
-//                    local townName = GSTown.GetName(townId);
-//                    local cargoName = GSCargo.GetName(cargoType);
-//                    GSLog.Info(townName + " supplied " + supplied + " " + cargoName);
-//                }
-//
-//            }
-//        }
         // todo store contents of caches when saving and loading game
 
-        local origins = findOriginIndustries(currentDate);
+        local origins = findOrigins(currentDate);
         trackDeliveries(origins);
         groupDestinationsAndOrigins(origins);
 //        GSLog.Info(origins.len() + " origins found");
@@ -188,7 +166,7 @@ function trackDeliveries(origins) {
 function trackDeliveryHop(task, taskQueue) {
     local vehicles = GSVehicleList_Station(task.hopStationId);
     foreach (vehicleId, _ in vehicles) {
-        local capacity = GSVehicle.GetCapacity(vehicleId, task.cargoId);
+        local capacity = GSVehicle.GetCapacity(vehicleId, task.cargoId); // todo test orders with refits
 
         if (capacity < 1) {
             continue;

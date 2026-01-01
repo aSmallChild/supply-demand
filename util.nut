@@ -216,34 +216,39 @@ function stationCargoRecipients(stationId, cargoId) {
     };
 }
 
-function findOriginIndustries(currentDate) {
-    local validOriginTypes = getValidOriginIndustryTypes();
-    local industries = GSIndustryList();
+function findOrigins(currentDate) {
     local origins = [];
-    foreach (industryId, _ in industries) {
-        local industryType = GSIndustry.GetIndustryType(industryId);
+    local validOriginIndustryTypes = getValidOriginIndustryTypes();
+    local originTownIds = {};
+    local originIndustryIds = {};
+    foreach (stationId, _ in GSStationList(GSStation.STATION_ANY)) {
+        foreach (cargoType, _ in CargoCategoryCache.townCargoTypes) {
+            local townId = GSStation.GetNearestTown(stationId);
+            local transported = GSTown.GetLastMonthSupplied(townId, cargoType);
+            if (transported < 1) {
+                continue;
+            }
 
-        local isValid = false;
-        foreach (validType in validOriginTypes) {
-            if (validType == industryType) {
-                isValid = true;
-                break;
+            if (!(townId in originTownIds)) {
+                originTownIds[townId] <- {};
+            }
+            originTownIds[townId][stationId] <- true;
+        }
+
+        local coverageTiles = GSTileList_StationCoverage(stationId);
+        foreach (tile, _ in coverageTiles) {
+            local industryId = GSIndustry.GetIndustryID(tile);
+            if (isValidOriginIndustry(industryId, validOriginIndustryTypes)) {
+                if (!(industryId in originIndustryIds)) {
+                    originIndustryIds[industryId] <- {};
+                }
+                originIndustryIds[industryId][stationId] <- true;
             }
         }
-        if (!isValid) {
-            continue;
-        }
+    }
 
-        local currentLevel = GSIndustry.GetProductionLevel(industryId);
-        if (!GSIndustry.SetProductionLevel(industryId, currentLevel, false, "")) {
-            continue;
-        }
-
-        local stations = getIndustryStations(industryId);
-        if (stations.len() < 1) {
-            continue;
-        }
-
+    foreach (industryId, stationIds in originIndustryIds) {
+        local industryType = GSIndustry.GetIndustryType(industryId);
         local cargoTypes = GSIndustryType.GetProducedCargo(industryType);
         foreach (cargoType, _ in cargoTypes) {
             local transported = GSIndustry.GetLastMonthTransported(industryId, cargoType);
@@ -252,7 +257,7 @@ function findOriginIndustries(currentDate) {
             }
 
             local acceptingStations = [];
-            foreach (stationId in stations) {
+            foreach (stationId, _ in stationIds) {
                 if (GSStation.GetCargoRating(stationId, cargoType) < 1) {
                     continue;
                 }
@@ -264,6 +269,7 @@ function findOriginIndustries(currentDate) {
             }
             origins.append({
                 date = currentDate,
+                townId = null,
                 industryId = industryId,
                 cargoId = cargoType,
                 possibleStationIds = acceptingStations,
@@ -277,20 +283,73 @@ function findOriginIndustries(currentDate) {
         }
     }
 
+    foreach (townId, stationIds in originTownIds) {
+        foreach (cargoType, _ in CargoCategoryCache.townCargoTypes) {
+            local acceptingStations = [];
+            foreach (stationId, _ in stationIds) {
+                if (GSStation.GetCargoRating(stationId, cargoType) < 1) {
+                    continue;
+                }
+                acceptingStations.append(stationId);
+            }
+
+            if (!acceptingStations.len()) {
+                continue;
+            }
+            origins.append({
+                date = currentDate,
+                townId = townId,
+                industryId = null,
+                cargoId = cargoType,
+                possibleStationIds = acceptingStations,
+                originStationIds = [],
+                destinationStationIds = [],
+                destinationIndustryIds = [],
+                destinationTownIds = [],
+                destinationCargoIds = [],
+                destinationTracking = [],
+            });
+        }
+    }
     return origins;
+}
+
+function isValidOriginIndustry(industryId, validOriginIndustryTypes) {
+    if (!GSIndustry.IsValidIndustry(industryId)) {
+        return false;
+    }
+
+    local industryType = GSIndustry.GetIndustryType(industryId);
+    local isValid = false;
+    foreach (validType in validOriginIndustryTypes) {
+        if (validType == industryType) {
+            isValid = true;
+            break;
+        }
+    }
+    if (!isValid) {
+        return false;
+    }
+
+    local currentLevel = GSIndustry.GetProductionLevel(industryId);
+    if (!GSIndustry.SetProductionLevel(industryId, currentLevel, false, "")) {
+        return false;
+    }
+
+    return true;
 }
 
 function getValidOriginIndustryTypes() {
     local validTypes = [];
     foreach (industryType, _ in GSIndustryTypeList()) {
-        if (isValidOriginIndustry(industryType)) {
+        if (isValidOriginIndustryType(industryType)) {
             validTypes.append(industryType);
         }
     }
     return validTypes;
 }
 
-function isValidOriginIndustry(industryType) {
+function isValidOriginIndustryType(industryType) {
     if (!GSIndustryType.ProductionCanIncrease(industryType)) {
         return false;
     }
@@ -519,7 +578,7 @@ function getTownCargoDemand(population) {
     local req = {
         categories = 0,
         target = 100 * SupplyDemand.runIntervalMonths,
-        maxGrowth = 25 * SupplyDemand.runIntervalMonths,
+        maxGrowth = 20 * SupplyDemand.runIntervalMonths,
     }
 
     if (population < 2500) {
@@ -529,34 +588,31 @@ function getTownCargoDemand(population) {
     if (population < 10000) {
         req.categories = 1;
         req.target = 200 * SupplyDemand.runIntervalMonths;
-        req.maxGrowth = 50 * SupplyDemand.runIntervalMonths;
+        req.maxGrowth = 40 * SupplyDemand.runIntervalMonths;
         return req;
     }
 
+    req.categories = 2;
     if (population < 33000) {
-        req.categories = 2;
         req.target = 400 * SupplyDemand.runIntervalMonths;
-        req.maxGrowth = 75 * SupplyDemand.runIntervalMonths;
+        req.maxGrowth = 60 * SupplyDemand.runIntervalMonths;
         return req;
     }
 
     if (population < 67000) {
-        req.categories = 2;
         req.target = 800 * SupplyDemand.runIntervalMonths;
-        req.maxGrowth = 100 * SupplyDemand.runIntervalMonths;
+        req.maxGrowth = 80 * SupplyDemand.runIntervalMonths;
         return req;
     }
 
+    req.maxGrowth = 100 * SupplyDemand.runIntervalMonths;
     if (population < 300000) {
-        req.categories = 2;
         req.target = 1200 * SupplyDemand.runIntervalMonths;
-        req.maxGrowth = 125 * SupplyDemand.runIntervalMonths;
         return req;
     }
 
     req.categories = 3;
     req.target = 2400 * SupplyDemand.runIntervalMonths;
-    req.maxGrowth = 250 * SupplyDemand.runIntervalMonths;
     return req;
 }
 
