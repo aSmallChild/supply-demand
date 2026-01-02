@@ -3,6 +3,7 @@ require("cargo.nut");
 
 class SupplyDemand extends GSController {
     static runIntervalMonths = 3;
+    nextRunDate = null;
     constructor() {
     }
 }
@@ -12,22 +13,23 @@ function SupplyDemand::Start() {
     GSLog.Info("Script started, game date: " + formatDate(lastRunDate));
     categorizeAllCargoTypes();
 
-    local nextRunDate = getStartOfNextMonth(lastRunDate, SupplyDemand.runIntervalMonths);
+    if (!this.nextRunDate) {
+        this.nextRunDate = getStartOfNextMonth(lastRunDate, SupplyDemand.runIntervalMonths);
+    }
     while (true) {
         this.Sleep(74 * 3) // 3 days
         if (GSGame.IsPaused()) {
             continue;
         }
         local currentDate = GSDate.GetCurrentDate();
-        if (nextRunDate > currentDate) {
+        if (this.nextRunDate > currentDate) {
             continue;
         }
-        lastRunDate = nextRunDate;
-        nextRunDate = getStartOfNextMonth(nextRunDate, SupplyDemand.runIntervalMonths);
+        lastRunDate = this.nextRunDate;
+        this.nextRunDate = getStartOfNextMonth(this.nextRunDate, SupplyDemand.runIntervalMonths);
         GSLog.Info("");
-        GSLog.Info("Month: " + formatDate(lastRunDate) + ", started processing on " + formatDate(currentDate));
+        GSLog.Info("Month: " + formatDate(lastRunDate) + ". Started processing on " + formatDate(currentDate) + ". Next run date: " + this.nextRunDate);
         logIfBehindSchedule(lastRunDate, currentDate);
-        // todo store contents of caches when saving and loading game
 
         local origins = findOrigins(currentDate);
         trackDeliveries(origins);
@@ -134,4 +136,26 @@ function trackDeliveryHop(task, taskQueue) {
             }
         }
     }
+}
+
+function SupplyDemand::Save()
+{
+	return {
+		nextRunDate = this.nextRunDate,
+        // todo there is some recursive nesting on this data so it is more than 25 levels of nesting, flatten before saving, reconstruct after loading
+//		trackedCargo = CargoTracker.trackedCargo,
+//		towns = CargoTracker.towns,
+	};
+}
+
+function SupplyDemand::Load(version, saveData)
+{
+    if ("nextRunDate" in saveData) {
+        this.nextRunDate = saveData.nextRunDate;
+        GSLog.Info("Game loaded, next run date: " + formatDate(this.nextRunDate));
+    }
+
+//    if ("trackedCargo" in saveData) {
+//        CargoTracker.load(saveData.trackedCargo, saveData.towns);
+//    }
 }

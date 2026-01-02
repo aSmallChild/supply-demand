@@ -476,7 +476,7 @@ class CargoTracker {
 
             if (value.industryId) {
                 value.cargoReceived += GSCargoMonitor.GetIndustryDeliveryAmount(
-                value.companyId,
+                    value.companyId,
                     value.cargoId,
                     value.industryId,
                     keepTracking
@@ -485,7 +485,7 @@ class CargoTracker {
             }
 
             value.cargoReceived += GSCargoMonitor.GetTownDeliveryAmount(
-            value.companyId,
+                value.companyId,
                 value.cargoId,
                 value.townId,
                 keepTracking
@@ -563,7 +563,7 @@ function analyzeTownCargo(townData) {
         population = population,
         demand = demand,
         totalDeliveryAmount = 0,
-        categoryReceived = buildCategoryCargoTable(), // cargoId -> sum
+        categoryReceived = buildCategoryCargoTable(), // category -> cargoId -> sum
         categoryOrigins = buildCategoryCargoTable(), // category -> key -> true
         originIndustryIds = {}, // cargoId -> industryIds
         categoryTotals = buildCategoryCargoTable(function() {
@@ -619,6 +619,10 @@ function analyzeTownCargo(townData) {
             surplus = 0,
         }
         analysis.categoryScores[category] <- score;
+    }
+
+    foreach (category in CargoCategory.order) {
+        local score = analysis.categoryScores[category];
         foreach (cargoId, _ in CargoCategory.sets[category]) {
             if (!(cargoId in analysis.cargoTotals) || !analysis.cargoTotals[cargoId]) {
                 continue;
@@ -628,6 +632,7 @@ function analyzeTownCargo(townData) {
                 score.surplus += amount - demand.target;
                 score.totalCargo += amount;
                 score.fulfilledCargoIds.append(cargoId);
+                setFulfilledOriginCargoTypes(analysis, cargoId);
                 continue;
             }
             increaseSupply(townData, analysis, cargoId, (demand.target - amount) / SupplyDemand.runIntervalMonths);
@@ -635,6 +640,15 @@ function analyzeTownCargo(townData) {
     }
 
     return analysis;
+}
+
+function setFulfilledOriginCargoTypes(analysis, cargoId) {
+    foreach (industryId, _ in analysis.originIndustryIds[cargoId]) {
+        foreach (cargoId, _ in GSCargoList_IndustryProducing(industryId)) {
+            local category = getCargoCategory(cargoId);
+            addUnique(analysis.categoryScores[category].fulfilledCargoIds, cargoId);
+        }
+    }
 }
 
 function processTown(townData) {
@@ -786,11 +800,17 @@ function buildGrowthMessage(growthSnapshot, analysis, townData, fulfilledCategor
         categoryLine.AddParam(analysis.categoryOrigins[category].len());
         local cargoList = "";
         foreach (cargoId, _ in CargoCategory.sets[category]) {
-            if (!(cargoId in analysis.cargoTotals) || !analysis.cargoTotals[cargoId]) {
+            if (!listContains(analysis.categoryScores[category].fulfilledCargoIds, cargoId)) {
                 continue;
             }
-            local amount = analysis.cargoTotals[cargoId];
-            cargoList += (cargoList != "" ? ", " : "") + GSCargo.GetName(cargoId) + ": " + amount;
+            local amount = cargoId in analysis.cargoTotals ? analysis.cargoTotals[cargoId] : 0;
+            cargoList += cargoList != "" ? ", " : "";
+            if (amount > 1) {
+                cargoList += GSCargo.GetName(cargoId) + ": " + amount;
+            }
+            else {
+                cargoList += GSCargo.GetName(cargoId);
+            }
         }
         categoryLine.AddParam(score.fulfilledCargoIds.len() + "/" + score.totalCargos + (cargoList != "" ? " - " + cargoList : ""));
         message.AddParam(categoryLine);
