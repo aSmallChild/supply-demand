@@ -83,26 +83,54 @@ function formatDate(date) {
 
 function getStartOfNextMonth(date, increment) {
     local year = GSDate.GetYear(date);
-    local month = GSDate.GetMonth(date) + increment % 12;
-    if (increment > 12) {
+    local month = GSDate.GetMonth(date) + (increment % 12);
+    if (increment >= 12) {
         year += increment / 12;
     }
 
     if (month > 12) {
-        month = 1;
+        month -= 12;
         year++;
     }
     return GSDate.GetDate(year, month, 1);
 }
 
+function monthsBetween(startDate, endDate) {
+    return 12 * (GSDate.GetYear(endDate) - GSDate.GetYear(startDate)) + (GSDate.GetMonth(endDate) - GSDate.GetMonth(startDate));
+}
+
+function dateCompare(a, b) {
+    local aYear = GSDate.GetYear(a);
+    local bYear = GSDate.GetYear(b);
+    if (aYear > bYear) {
+        return 1;
+    }
+    if (aYear < bYear) {
+        return -1;
+    }
+    local aMonth = GSDate.GetMonth(a);
+    local bMonth = GSDate.GetMonth(b);
+    if (aMonth > bMonth) {
+        return 1;
+    }
+    if (aMonth < bMonth) {
+        return -1;
+    }
+
+    local aDay = GSDate.GetDayOfMonth(a);
+    local bDay = GSDate.GetDayOfMonth(b);
+    if (aDay > bDay) {
+        return 1;
+    }
+    if (aDay < bDay) {
+        return -1;
+    }
+
+    return 0;
+}
+
 function logIfBehindSchedule(lastRunDate, currentDate) {
-    local currentYear = GSDate.GetYear(currentDate);
-    local currentMonth = GSDate.GetMonth(currentDate);
-    local nextRunYear = GSDate.GetYear(lastRunDate);
-    local nextRunMonth = GSDate.GetMonth(lastRunDate);
-
-    local monthsBehind = (currentYear - nextRunYear) * 12 + (currentMonth - nextRunMonth);
-
+    local monthsBehind = monthsBetween(lastRunDate, currentDate);
     if (monthsBehind > 1) {
         GSLog.Error("Script is running " + monthsBehind + " months behind schedule!");
         GSLog.Error("Current: " + formatDate(currentDate) + " vs Expected: " + formatDate(lastRunDate));
@@ -452,6 +480,7 @@ class CargoTracker {
             townId = townId,
             industryId = industryId,
             date = GSDate.GetCurrentDate(),
+            startDate = GSDate.GetCurrentDate(),
             cargoReceived = 0,
         };
         town.deliveredCargo[key] <- params;
@@ -472,6 +501,10 @@ class CargoTracker {
                 removedCount++;
             } else {
                 keptCount++;
+            }
+
+            if (value.cargoReceived == 0) {
+                value.startDate = GSDate.GetCurrentDate();
             }
 
             if (value.industryId) {
@@ -525,7 +558,7 @@ function getTownCargoDemand(population) {
         return req;
     }
 
-    if (population < 10000) {
+    if (population < 5000) {
         req.categories = 1;
         req.target = 200 * SupplyDemand.runIntervalMonths;
         req.maxGrowth = 40 * SupplyDemand.runIntervalMonths;
@@ -533,20 +566,20 @@ function getTownCargoDemand(population) {
     }
 
     req.categories = 2;
-    if (population < 33000) {
+    if (population < 10000) {
         req.target = 400 * SupplyDemand.runIntervalMonths;
         req.maxGrowth = 60 * SupplyDemand.runIntervalMonths;
         return req;
     }
 
-    if (population < 67000) {
+    if (population < 50000) {
         req.target = 800 * SupplyDemand.runIntervalMonths;
         req.maxGrowth = 80 * SupplyDemand.runIntervalMonths;
         return req;
     }
 
     req.maxGrowth = 100 * SupplyDemand.runIntervalMonths;
-    if (population < 300000) {
+    if (population < 200000) {
         req.target = 1200 * SupplyDemand.runIntervalMonths;
         return req;
     }
@@ -570,6 +603,7 @@ function analyzeTownCargo(townData) {
             return 0
         }),
         cargoTotals = {}, // cargoId -> sum
+        cargoStartDates = {}, // cargoId -> date
         companyCargoTotals = {}, // [companyId][cargoId] -> sum,
         categoryScores = {},
     };
@@ -599,6 +633,7 @@ function analyzeTownCargo(townData) {
 
         if (!(cargoId in analysis.cargoTotals)) {
             analysis.cargoTotals[cargoId] <- 0;
+            analysis.cargoStartDates[cargoId] <- delivery.startDate;
         }
         analysis.cargoTotals[cargoId] += amount;
 
@@ -635,7 +670,14 @@ function analyzeTownCargo(townData) {
                 setFulfilledOriginCargoTypes(analysis, cargoId);
                 continue;
             }
-            increaseSupply(townData, analysis, cargoId, (demand.target - amount) / SupplyDemand.runIntervalMonths);
+            local cargoName = GSCargo.GetName(cargoId);
+            local monthsSinceFirstDelivery = monthsBetween(analysis.cargoStartDates[cargoId], GSDate.GetCurrentDate());
+            local target = demand.target / SupplyDemand.runIntervalMonths;
+            if (monthsSinceFirstDelivery < 1) {
+                continue;
+            }
+            local monthlyAmount = amount / monthsSinceFirstDelivery;
+            increaseSupply(townData, analysis, cargoId, target - monthlyAmount);
         }
     }
 
@@ -782,6 +824,7 @@ function resetCargoAmount(townData, cargoId) {
     foreach (key, delivery in townData.deliveredCargo) {
         if (delivery.cargoId == cargoId) {
             delivery.cargoReceived = 0;
+            delivery.startDate = GSDate.GetCurrentDate();
         }
     }
 }

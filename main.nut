@@ -28,7 +28,7 @@ function SupplyDemand::Start() {
         lastRunDate = this.nextRunDate;
         this.nextRunDate = getStartOfNextMonth(this.nextRunDate, SupplyDemand.runIntervalMonths);
         GSLog.Info("");
-        GSLog.Info("Month: " + formatDate(lastRunDate) + ". Started processing on " + formatDate(currentDate) + ". Next run date: " + this.nextRunDate);
+        GSLog.Info("Month: " + formatDate(lastRunDate) + ". Started processing on " + formatDate(currentDate) + ". Next run date: " + formatDate(this.nextRunDate));
         logIfBehindSchedule(lastRunDate, currentDate);
 
         local origins = findOrigins(currentDate);
