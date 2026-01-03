@@ -28,15 +28,15 @@ function SupplyDemand::Start() {
         lastRunDate = this.nextRunDate;
         this.nextRunDate = getStartOfNextMonth(this.nextRunDate, SupplyDemand.runIntervalMonths);
         GSLog.Info("");
-        GSLog.Info("Month: " + formatDate(lastRunDate) + ". Started processing on " + formatDate(currentDate) + ". Next run date: " + formatDate(this.nextRunDate));
+        GSLog.Info("Month: " + formatDate(lastRunDate) + ". Started processing on " + formatDate(currentDate));
         logIfBehindSchedule(lastRunDate, currentDate);
 
         local origins = findOrigins(currentDate);
         trackDeliveries(origins);
         CargoTracker.update(lastRunDate);
-        processTowns();
+        CargoTracker.processTowns();
 
-        GSLog.Info("Month: " + formatDate(lastRunDate) + " started on " + formatDate(currentDate) + " and finished processing on: " + formatDate(GSDate.GetCurrentDate()));
+        GSLog.Info("Month: " + formatDate(lastRunDate) + " finished processing on " + formatDate(GSDate.GetCurrentDate()));
     }
 }
 
@@ -142,20 +142,18 @@ function SupplyDemand::Save()
 {
 	return {
 		nextRunDate = this.nextRunDate,
-        // todo there is some recursive nesting on this data so it is more than 25 levels of nesting, flatten before saving, reconstruct after loading
-//		trackedCargo = CargoTracker.trackedCargo,
-//		towns = CargoTracker.towns,
+		cargoTracker = CargoTracker.save(),
 	};
 }
 
 function SupplyDemand::Load(version, saveData)
 {
+    if ("cargoTracker" in saveData) {
+        GSLog.Info("Loading tracked cargo...");
+        CargoTracker.load(saveData.cargoTracker);
+    }
     if ("nextRunDate" in saveData) {
         this.nextRunDate = saveData.nextRunDate;
         GSLog.Info("Game loaded, next run date: " + formatDate(this.nextRunDate));
     }
-
-//    if ("trackedCargo" in saveData) {
-//        CargoTracker.load(saveData.trackedCargo, saveData.towns);
-//    }
 }

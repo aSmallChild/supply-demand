@@ -309,7 +309,6 @@ function findOrigins(currentDate) {
                 destinationIndustryIds = [],
                 destinationTownIds = [],
                 destinationCargoIds = [],
-                destinationTracking = [],
             });
         }
     }
@@ -338,7 +337,6 @@ function findOrigins(currentDate) {
                 destinationIndustryIds = [],
                 destinationTownIds = [],
                 destinationCargoIds = [],
-                destinationTracking = [],
             });
         }
     }
@@ -438,13 +436,30 @@ class CargoTracker {
     static trackedCargo = {};
     static towns = {};
 
+    static function save() {
+        local saveData = {
+            trackedCargo = CargoTracker.trackedCargo,
+            towns = CargoTracker.towns,
+        };
+        return saveData;
+    }
+
+    static function load(saveData) {
+        foreach (key, value in saveData.trackedCargo) {
+            CargoTracker.trackedCargo[key] <- value;
+        }
+        foreach (key, value in saveData.towns) {
+            CargoTracker.towns[key] <- value;
+        }
+    }
+
     static function track(origin, companyId, cargoId, townId, industryId) {
         if (industryId) {
             local key = companyId + "_" + cargoId + "_i" + industryId;
             if (key in CargoTracker.trackedCargo) {
                 return CargoTracker.linkOrigin(CargoTracker.trackedCargo[key], origin);
             }
-            CargoTracker.trackedCargo[key] <- CargoTracker.buildParams(key, companyId, cargoId, null, industryId);
+            CargoTracker.trackedCargo[key] <- CargoTracker.buildTrackedCargo(key, companyId, cargoId, null, industryId);
             return CargoTracker.linkOrigin(CargoTracker.trackedCargo[key], origin);
         }
 
@@ -452,19 +467,18 @@ class CargoTracker {
         if (key in CargoTracker.trackedCargo) {
             return CargoTracker.linkOrigin(CargoTracker.trackedCargo[key], origin);
         }
-        CargoTracker.trackedCargo[key] <- CargoTracker.buildParams(key, companyId, cargoId, townId, null);
+        CargoTracker.trackedCargo[key] <- CargoTracker.buildTrackedCargo(key, companyId, cargoId, townId, null);
         return CargoTracker.linkOrigin(CargoTracker.trackedCargo[key], origin);
     }
 
-    static function linkOrigin(tracking, origin) {
-        tracking.date = GSDate.GetCurrentDate();
+    static function linkOrigin(trackedCargo, origin) {
+        trackedCargo.date = GSDate.GetCurrentDate();
         local key = origin.industryId ? "i" + origin.industryId : "t" + origin.townId;
-        tracking.origins[key] <- origin;
-        origin.destinationTracking.append(tracking);
-        return tracking;
+        trackedCargo.origins[key] <- origin;
+        return trackedCargo;
     }
 
-    static function buildParams(key, companyId, cargoId, townId, industryId) {
+    static function buildTrackedCargo(key, companyId, cargoId, townId, industryId) {
         if (townId == null) {
             townId = getTownIdFromIndustryId(industryId);
         }
@@ -483,7 +497,7 @@ class CargoTracker {
             startDate = GSDate.GetCurrentDate(),
             cargoReceived = 0,
         };
-        town.deliveredCargo[key] <- params;
+        town.trackedCargoKeys[key] <- 0;
         return params;
     }
 
@@ -528,22 +542,22 @@ class CargoTracker {
         foreach (key in keysToRemove) {
             local trackedCargo = CargoTracker.trackedCargo[key];
             local town = CargoTracker.towns[trackedCargo.townId];
-            delete town.deliveredCargo[key];
+            delete town.trackedCargoKeys[key];
             delete CargoTracker.trackedCargo[key];
         }
     }
-}
 
-function processTowns() {
-    foreach (town in CargoTracker.towns) {
-        processTown(town);
+    static function processTowns() {
+        foreach (town in CargoTracker.towns) {
+            processTown(town);
+        }
     }
 }
 
 function buildTown(townId) {
     return {
         townId = townId,
-        deliveredCargo = {},
+        trackedCargoKeys = {},
     }
 }
 
@@ -608,10 +622,11 @@ function analyzeTownCargo(townData) {
         categoryScores = {},
     };
 
-    foreach (key, delivery in townData.deliveredCargo) {
-        local cargoId = delivery.cargoId;
-        local companyId = delivery.companyId;
-        local amount = delivery.cargoReceived;
+    foreach (key, _ in townData.trackedCargoKeys) {
+        local trackedCargo = CargoTracker.trackedCargo[key];
+        local cargoId = trackedCargo.cargoId;
+        local companyId = trackedCargo.companyId;
+        local amount = trackedCargo.cargoReceived;
         local category = getCargoCategory(cargoId);
         analysis.categoryOrigins[category][key] <- true;
 
@@ -625,7 +640,7 @@ function analyzeTownCargo(townData) {
         analysis.totalDeliveryAmount += amount;
         analysis.categoryReceived[category][cargoId] += amount;
         analysis.categoryTotals[category] += amount;
-        foreach (origin in delivery.origins) {
+        foreach (origin in trackedCargo.origins) {
             if (origin.industryId) {
                 analysis.originIndustryIds[cargoId][origin.industryId] <- true;
             }
@@ -633,7 +648,7 @@ function analyzeTownCargo(townData) {
 
         if (!(cargoId in analysis.cargoTotals)) {
             analysis.cargoTotals[cargoId] <- 0;
-            analysis.cargoStartDates[cargoId] <- delivery.startDate;
+            analysis.cargoStartDates[cargoId] <- trackedCargo.startDate;
         }
         analysis.cargoTotals[cargoId] += amount;
 
@@ -815,16 +830,18 @@ function increaseSupply(townData, analysis, cargoId, shortage) {
 
     local industryName = GSIndustry.GetName(bestIndustry);
     local cargoName = GSCargo.GetName(cargoId);
+    GSIndustry.SetControlFlags(bestIndustry, GSIndustry.INDCTL_NO_PRODUCTION_DECREASE); // appears to have no effect
     GSLog.Info("Increased " + cargoName + " production at " + industryName + " to address shortage of " + shortage + " units");
 
     return bestIndustry;
 }
 
 function resetCargoAmount(townData, cargoId) {
-    foreach (key, delivery in townData.deliveredCargo) {
-        if (delivery.cargoId == cargoId) {
-            delivery.cargoReceived = 0;
-            delivery.startDate = GSDate.GetCurrentDate();
+    foreach (key, _ in townData.trackedCargoKeys) {
+        local trackedCargo = CargoTracker.trackedCargo[key];
+        if (trackedCargo.cargoId == cargoId) {
+            trackedCargo.cargoReceived = 0;
+            trackedCargo.startDate = GSDate.GetCurrentDate();
         }
     }
 }
