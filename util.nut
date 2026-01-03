@@ -666,7 +666,6 @@ function analyzeTownCargo(townData) {
             totalCargo = 0,
             totalCargos = CargoCategory.sets[category].len(),
             fulfilledCargoIds = [],
-            surplus = 0,
         }
         analysis.categoryScores[category] <- score;
     }
@@ -679,20 +678,16 @@ function analyzeTownCargo(townData) {
             }
             local amount = analysis.cargoTotals[cargoId];
             if (amount >= demand.target) {
-                score.surplus += amount - demand.target;
                 score.totalCargo += amount;
                 score.fulfilledCargoIds.append(cargoId);
                 setFulfilledOriginCargoTypes(analysis, cargoId);
                 continue;
             }
-            local cargoName = GSCargo.GetName(cargoId);
             local monthsSinceFirstDelivery = monthsBetween(analysis.cargoStartDates[cargoId], GSDate.GetCurrentDate());
-            local target = demand.target / SupplyDemand.runIntervalMonths;
             if (monthsSinceFirstDelivery < 1) {
                 continue;
             }
-            local monthlyAmount = amount / monthsSinceFirstDelivery;
-            increaseSupply(townData, analysis, cargoId, target - monthlyAmount);
+            increaseSupply(townData, analysis, cargoId, monthsSinceFirstDelivery);
         }
     }
 
@@ -715,7 +710,6 @@ function processTown(townData) {
 
     local growthSnapshot = {
         population = analysis.population,
-        totalSurplus = 0,
         consumedCount = 0,
         numberOfNewHouses = 0,
         totalCargoTypes = 0,
@@ -764,7 +758,6 @@ function growTierZeroTown(growthSnapshot, analysis, townData, fulfilledCategorie
 
 function growTown(growthSnapshot, analysis, townData, fulfilledCategories) {
     foreach (category, score in analysis.categoryScores) {
-        growthSnapshot.totalSurplus += score.surplus;
         growthSnapshot.consumedCount += score.fulfilledCargoIds.len();
         foreach (cargoId in score.fulfilledCargoIds) {
             resetCargoAmount(townData, cargoId);
@@ -773,17 +766,15 @@ function growTown(growthSnapshot, analysis, townData, fulfilledCategories) {
     growthSnapshot.numberOfNewHouses = analysis.demand.maxGrowth * fulfilledCategories.len() / CargoCategory.getTotalCategories();
 }
 
-function increaseSupply(townData, analysis, cargoId, shortage) {
+function increaseSupply(townData, analysis, cargoId, monthsSinceFirstDelivery) {
     if (cargoId in CargoCategory.townCargoTypes) {
         // passengers and mail which increase with town growth
         // there is an edge case with oil rigs which produce passengers
         // oil rigs will only scale based on oil rather than passengers
         return;
     }
-    local targetDemand = analysis.demand.target;
-    local currentSupply = analysis.cargoTotals[cargoId] || 0;
-    local maxProduction = 128;
 
+    local maxProduction = 128;
     local bestIndustry = null;
     local bestScore = -1;
     local bestProductionLevel = 0;
@@ -823,15 +814,26 @@ function increaseSupply(townData, analysis, cargoId, shortage) {
     if (!bestIndustry) {
         return;
     }
-    local targetIncrease = max(1, min(8, max(shortage, targetDemand - currentSupply) / 100));
-    targetIncrease = targetIncrease.tointeger();
-    local newProductionLevel = min(maxProduction, bestProductionLevel + targetIncrease);
-    local success = GSIndustry.SetProductionLevel(bestIndustry, newProductionLevel, false, null);
 
+    local targetDemand = analysis.demand.target / SupplyDemand.runIntervalMonths;
+    local amount = analysis.cargoTotals[cargoId] || 0;
+    local monthlyAmount = amount / monthsSinceFirstDelivery;
+    local shortageFactor = (targetDemand - monthlyAmount) / targetDemand.tofloat();
+    local maxIncrease = 2 * SupplyDemand.runIntervalMonths;
+    local targetIncrease = max(1, (maxIncrease * shortageFactor).tointeger());
+    local newProductionLevel = min(maxProduction, bestProductionLevel + targetIncrease);
+    GSIndustry.SetProductionLevel(bestIndustry, newProductionLevel, false, null);
+
+    local townName = GSTown.GetName(townData.townId);
     local industryName = GSIndustry.GetName(bestIndustry);
     local cargoName = GSCargo.GetName(cargoId);
-    GSIndustry.SetControlFlags(bestIndustry, GSIndustry.INDCTL_NO_PRODUCTION_DECREASE); // appears to have no effect
-    GSLog.Info("Increased " + cargoName + " production at " + industryName + " to address shortage of " + shortage + " units");
+    GSIndustry.SetControlFlags(bestIndustry, GSIndustry.INDCTL_NO_PRODUCTION_DECREASE | GSIndustry.INDCTL_NO_CLOSURE | GSIndustry.INDCTL_EXTERNAL_PROD_LEVEL);
+    GSLog.Info("Increased production at " + industryName + " to " + newProductionLevel + " to address shortage of " + cargoName + " at " + townName);
+    local message = GSText(GSText.STR_INDUSTRY_SUMMARY);
+    message.AddParam(newProductionLevel);
+    message.AddParam(cargoName);
+    message.AddParam(townName);
+    GSIndustry.SetText(bestIndustry, message);
 
     return bestIndustry;
 }

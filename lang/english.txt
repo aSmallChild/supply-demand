@@ -3,3 +3,4 @@ STR_TOWN_SUMMARY         :Fulfilled categories: {RAW_STRING} Cargo target: {COMM
 STR_TOWN_ESSENTIAL_LINE  :1. Essentials: {COMMA} cargo from {COMMA} sources. Fulfilled {RAW_STRING}
 STR_TOWN_SERVICE_LINE    :2. Services: {COMMA} cargo from {COMMA} sources. Fulfilled {RAW_STRING}
 STR_TOWN_INDUSTRIAL_LINE :3. Industrial: {COMMA} cargo from {COMMA} sources. Fulfilled {RAW_STRING}
+STR_INDUSTRY_SUMMARY     :Level {COMMA}{}supporting {RAW_STRING} supply to:{}{RAW_STRING}

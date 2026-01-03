@@ -7,7 +7,7 @@ class SupplyDemandInfo extends GSInfo {
 	function CreateInstance()	{ return "SupplyDemand"; }
 	function GetShortName()		{ return "SDSD"; }
 	function GetAPIVersion()	{ return "1.3"; }
-	function GetURL()			{ return ""; }
+	function GetURL()			{ return "https://github.com/aSmallChild/supply-demand"; }
 
 	function GetSettings()
 	{
