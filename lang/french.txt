@@ -1,0 +1,6 @@
+﻿// STR_DUMMY_TEXT        :pour une raison quelconque, supprimer cette ligne casse le mod
+STR_TOWN_SUMMARY         :Catégories remplies : {RAW_STRING} Objectif de fret : {COMMA} Croissance : {RAW_STRING}{}{STRING3}{}{STRING3}{}{STRING3}
+STR_TOWN_ESSENTIAL_LINE  :1. Essentiels : {COMMA} fret de {COMMA} sources. Rempli {RAW_STRING}
+STR_TOWN_SERVICE_LINE    :2. Services : {COMMA} fret de {COMMA} sources. Rempli {RAW_STRING}
+STR_TOWN_INDUSTRIAL_LINE :3. Industriel : {COMMA} fret de {COMMA} sources. Rempli {RAW_STRING}
+STR_INDUSTRY_SUMMARY     :Niveau {COMMA}{}Soutient {RAW_STRING} l'approvisionnement vers :{}{RAW_STRING}

@@ -1,0 +1,6 @@
+﻿// STR_DUMMY_TEXT        :по какой-то причине удаление этой строки ломает мод
+STR_TOWN_SUMMARY         :Выполненные категории: {RAW_STRING} Цель груза: {COMMA} Рост: {RAW_STRING}{}{STRING3}{}{STRING3}{}{STRING3}
+STR_TOWN_ESSENTIAL_LINE  :1. Основное: {COMMA} груза от {COMMA} источников. Выполнено {RAW_STRING}
+STR_TOWN_SERVICE_LINE    :2. Услуги: {COMMA} груза от {COMMA} источников. Выполнено {RAW_STRING}
+STR_TOWN_INDUSTRIAL_LINE :3. Промышленное: {COMMA} груза от {COMMA} источников. Выполнено {RAW_STRING}
+STR_INDUSTRY_SUMMARY     :Уровень {COMMA}{}Поддерживает {RAW_STRING} поставку в:{}{RAW_STRING}

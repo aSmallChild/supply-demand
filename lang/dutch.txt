@@ -1,0 +1,6 @@
+﻿// STR_DUMMY_TEXT        :om de een of andere reden breekt het verwijderen van deze regel de mod
+STR_TOWN_SUMMARY         :Voldane categorieën: {RAW_STRING} Vrachtdoel: {COMMA} Groei: {RAW_STRING}{}{STRING3}{}{STRING3}{}{STRING3}
+STR_TOWN_ESSENTIAL_LINE  :1. Essentieel: {COMMA} vracht van {COMMA} bronnen. Voldaan {RAW_STRING}
+STR_TOWN_SERVICE_LINE    :2. Diensten: {COMMA} vracht van {COMMA} bronnen. Voldaan {RAW_STRING}
+STR_TOWN_INDUSTRIAL_LINE :3. Industrieel: {COMMA} vracht van {COMMA} bronnen. Voldaan {RAW_STRING}
+STR_INDUSTRY_SUMMARY     :Niveau {COMMA}{}Ondersteunt {RAW_STRING} levering aan:{}{RAW_STRING}

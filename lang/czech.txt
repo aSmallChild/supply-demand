@@ -1,0 +1,6 @@
+﻿// STR_DUMMY_TEXT        :z nějakého důvodu odstranění tohoto řádku rozbije mod
+STR_TOWN_SUMMARY         :Splněné kategorie: {RAW_STRING} Cíl nákladu: {COMMA} Růst: {RAW_STRING}{}{STRING3}{}{STRING3}{}{STRING3}
+STR_TOWN_ESSENTIAL_LINE  :1. Základní: {COMMA} nákladu z {COMMA} zdrojů. Splněno {RAW_STRING}
+STR_TOWN_SERVICE_LINE    :2. Služby: {COMMA} nákladu z {COMMA} zdrojů. Splněno {RAW_STRING}
+STR_TOWN_INDUSTRIAL_LINE :3. Průmyslové: {COMMA} nákladu z {COMMA} zdrojů. Splněno {RAW_STRING}
+STR_INDUSTRY_SUMMARY     :Úroveň {COMMA}{}Podporuje {RAW_STRING} dodávku do:{}{RAW_STRING}

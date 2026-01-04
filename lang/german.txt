@@ -1,0 +1,6 @@
+﻿// STR_DUMMY_TEXT        :aus irgendeinem Grund bricht das Entfernen dieser Zeile die Mod
+STR_TOWN_SUMMARY         :Erfüllte Kategorien: {RAW_STRING} Frachtziel: {COMMA} Wachstum: {RAW_STRING}{}{STRING3}{}{STRING3}{}{STRING3}
+STR_TOWN_ESSENTIAL_LINE  :1. Grundbedarf: {COMMA} Fracht von {COMMA} Quellen. Erfüllt {RAW_STRING}
+STR_TOWN_SERVICE_LINE    :2. Dienstleistungen: {COMMA} Fracht von {COMMA} Quellen. Erfüllt {RAW_STRING}
+STR_TOWN_INDUSTRIAL_LINE :3. Industrie: {COMMA} Fracht von {COMMA} Quellen. Erfüllt {RAW_STRING}
+STR_INDUSTRY_SUMMARY     :Stufe {COMMA}{}Unterstützt {RAW_STRING} Lieferung an:{}{RAW_STRING}

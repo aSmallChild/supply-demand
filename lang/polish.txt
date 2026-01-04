@@ -1,0 +1,6 @@
+﻿// STR_DUMMY_TEXT        :z jakiegoś powodu usunięcie tej linii psuje mod
+STR_TOWN_SUMMARY         :Spełnione kategorie: {RAW_STRING} Cel ładunku: {COMMA} Wzrost: {RAW_STRING}{}{STRING3}{}{STRING3}{}{STRING3}
+STR_TOWN_ESSENTIAL_LINE  :1. Niezbędne: {COMMA} ładunku z {COMMA} źródeł. Spełnione {RAW_STRING}
+STR_TOWN_SERVICE_LINE    :2. Usługi: {COMMA} ładunku z {COMMA} źródeł. Spełnione {RAW_STRING}
+STR_TOWN_INDUSTRIAL_LINE :3. Przemysłowe: {COMMA} ładunku z {COMMA} źródeł. Spełnione {RAW_STRING}
+STR_INDUSTRY_SUMMARY     :Poziom {COMMA}{}Wspiera {RAW_STRING} dostawę do:{}{RAW_STRING}

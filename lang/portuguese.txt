@@ -1,0 +1,6 @@
+﻿// STR_DUMMY_TEXT        :por algum motivo remover esta linha quebra o mod
+STR_TOWN_SUMMARY         :Categorias cumpridas: {RAW_STRING} Meta de carga: {COMMA} Crescimento: {RAW_STRING}{}{STRING3}{}{STRING3}{}{STRING3}
+STR_TOWN_ESSENTIAL_LINE  :1. Essenciais: {COMMA} carga de {COMMA} fontes. Cumprido {RAW_STRING}
+STR_TOWN_SERVICE_LINE    :2. Serviços: {COMMA} carga de {COMMA} fontes. Cumprido {RAW_STRING}
+STR_TOWN_INDUSTRIAL_LINE :3. Industrial: {COMMA} carga de {COMMA} fontes. Cumprido {RAW_STRING}
+STR_INDUSTRY_SUMMARY     :Nível {COMMA}{}Apoia {RAW_STRING} fornecimento para:{}{RAW_STRING}

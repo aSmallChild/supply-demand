@@ -1,0 +1,6 @@
+﻿// STR_DUMMY_TEXT        :出于某种原因删除此行会破坏模组
+STR_TOWN_SUMMARY         :已满足类别: {RAW_STRING} 货物目标: {COMMA} 增长: {RAW_STRING}{}{STRING3}{}{STRING3}{}{STRING3}
+STR_TOWN_ESSENTIAL_LINE  :1. 必需品: {COMMA} 货物来自 {COMMA} 来源。已满足 {RAW_STRING}
+STR_TOWN_SERVICE_LINE    :2. 服务: {COMMA} 货物来自 {COMMA} 来源。已满足 {RAW_STRING}
+STR_TOWN_INDUSTRIAL_LINE :3. 工业: {COMMA} 货物来自 {COMMA} 来源。已满足 {RAW_STRING}
+STR_INDUSTRY_SUMMARY     :等级 {COMMA}{}支持 {RAW_STRING} 供应至:{}{RAW_STRING}
