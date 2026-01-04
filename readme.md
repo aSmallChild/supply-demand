@@ -9,7 +9,7 @@ Basically it's about building high capacity logistics networks.
 Cargo is only tracked when transported percentages are sufficiently high & it has to deliver across the entire supply chain.
 E.g. For Oil to be tracked the refinery has to be supplying goods to a town.
 
-# To do
+## To do
 
 - [x] if monthly average supply is not sufficient for constant growth boost production of suppliers
 - [ ] ~~track some stats~~
@@ -20,3 +20,8 @@ E.g. For Oil to be tracked the refinery has to be supplying goods to a town.
   - [ ] run interval
 - [ ] only process shared orders once
 - [ ] delivery tracking works if orders contain a refit at a station
+
+## Uploading
+
+Update changelog.
+Zip files and name SupplyDemand-1.0.zip (adjust version number in info and set in filename)
