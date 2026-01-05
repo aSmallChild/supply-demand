@@ -115,10 +115,12 @@ jobs:
           
           sed -i "s/function GetVersion().*{ return [0-9]*; }/function GetVersion()     { return $VERSION_INT; }/" "$INFO_FILE"
           sed -i "s/function GetDate().*{ return \"[^\"]*\"; }/function GetDate()       { return \"$VERSION\"; }/" "$INFO_FILE"
+          sed -i 's/function GetName().*{ return "\(.*\) (DEV)"; }/function GetName()       { return "\1"; }/' "$INFO_FILE"
           
           echo "Updated $INFO_FILE:"
           echo "  GetVersion() -> $VERSION_INT"
           echo "  GetDate() -> $VERSION"
+          echo "  GetName() -> Removed (DEV) suffix"
 
       - name: Create zip file
         run: |

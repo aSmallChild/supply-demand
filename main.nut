@@ -9,7 +9,7 @@ class SupplyDemand extends GSController {
 }
 
 function SupplyDemand::Start() {
-    local lastRunDate = GSDate.GetCurrentDate(); // todo save & load this from game state
+    local lastRunDate = GSDate.GetCurrentDate();
     GSLog.Info("Script started, game date: " + formatDate(lastRunDate));
     categorizeAllCargoTypes();
 
@@ -80,8 +80,7 @@ function trackDeliveries(origins) {
 function trackDeliveryHop(task, taskQueue) {
     local vehicles = GSVehicleList_Station(task.hopStationId);
     foreach (vehicleId, _ in vehicles) {
-        local capacity = GSVehicle.GetCapacity(vehicleId, task.cargoId); // todo test orders with refits
-
+        local capacity = GSVehicle.GetRefitCapacity(vehicleId, task.cargoId);
         if (capacity < 1) {
             continue;
         }
