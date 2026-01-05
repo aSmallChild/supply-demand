@@ -1,0 +1,148 @@
+name: Create Release Zip
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+env:
+  CHANGELOG_FILE: changelog.txt
+  FILES_TO_ZIP: lang/ *.nut readme.md changelog.txt
+  INFO_FILE: info.nut
+  ZIP_NAME: SupplyDemand
+
+jobs:
+  create-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract version from changelog
+        id: version
+        run: |
+          if [ ! -f "$CHANGELOG_FILE" ]; then
+            echo "Error: $CHANGELOG_FILE not found!"
+            exit 1
+          fi
+          
+          VERSION=$(grep -m 1 '^v' "$CHANGELOG_FILE" | awk '{print $1}' | sed 's/^v//')
+          
+          if [ -z "$VERSION" ]; then
+            echo "Error: No version found in $CHANGELOG_FILE (looking for line starting with 'v')"
+            exit 1
+          fi
+          
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Extracted version from changelog: $VERSION"
+
+      - name: Check if release already exists
+        id: check_release
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          TAG="v$VERSION"
+          
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG"; then
+            echo "## ❌ Release Already Exists" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Error:** Release \`$TAG\` already exists!" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Version from changelog:** \`$VERSION\`" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 🔧 To fix this:" >> $GITHUB_STEP_SUMMARY
+            echo "1. Update your \`$CHANGELOG_FILE\` with a new version number at the top" >> $GITHUB_STEP_SUMMARY
+            echo "2. Ensure the version is unique and hasn't been released before" >> $GITHUB_STEP_SUMMARY
+            echo "3. Push your changes again" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Existing releases:** Check https://github.com/${{ github.repository }}/releases" >> $GITHUB_STEP_SUMMARY
+            
+            echo "::error::Release v$VERSION already exists. Update $CHANGELOG_FILE with a new version number."
+            exit 1
+          fi
+          
+          echo "✅ Version $VERSION is unique, proceeding with release creation" >> $GITHUB_STEP_SUMMARY
+
+      - name: Extract changelog entry
+        id: changelog
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          awk -v version="v$VERSION" '
+            BEGIN { in_section=0; found=0 }
+            /^v[^ ]/ { 
+              if (in_section) exit;
+              if ($1 == version) { 
+                in_section=1; 
+                found=1;
+                next;
+              }
+            }
+            in_section && /^-/ { 
+              print $0 
+            }
+            END { 
+              if (!found) exit 1 
+            }
+          ' "$CHANGELOG_FILE" > /tmp/changelog_entry.txt
+          
+          if [ ! -s /tmp/changelog_entry.txt ]; then
+            echo "Error: No changelog entries found for version v$VERSION"
+            exit 1
+          fi
+          
+          {
+            echo 'CHANGELOG_BODY<<EOF'
+            cat /tmp/changelog_entry.txt
+            echo 'EOF'
+          } >> $GITHUB_OUTPUT
+
+      - name: Update info.nut with version
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          
+          if [ ! -f "$INFO_FILE" ]; then
+            echo "Error: $INFO_FILE not found!"
+            exit 1
+          fi
+          
+          VERSION_INT=$(echo "$VERSION" | tr -d '-')
+          
+          sed -i "s/function GetVersion().*{ return [0-9]*; }/function GetVersion()     { return $VERSION_INT; }/" "$INFO_FILE"
+          sed -i "s/function GetDate().*{ return \"[^\"]*\"; }/function GetDate()       { return \"$VERSION\"; }/" "$INFO_FILE"
+          
+          echo "Updated $INFO_FILE:"
+          echo "  GetVersion() -> $VERSION_INT"
+          echo "  GetDate() -> $VERSION"
+
+      - name: Create zip file
+        run: |
+          ZIP_FILE="${ZIP_NAME}-${{ steps.version.outputs.version }}.zip"
+          
+          zip -r "$ZIP_FILE" $FILES_TO_ZIP
+          
+          echo "Created: $ZIP_FILE"
+          ls -lh "$ZIP_FILE"
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: "v${{ steps.version.outputs.version }}"
+          name: "Release v${{ steps.version.outputs.version }}"
+          body: |
+            ## Changes
+            
+            ${{ steps.changelog.outputs.CHANGELOG_BODY }}
+            
+            ---
+            *Built from commit ${{ github.sha }}*
+          files: ${{ env.ZIP_NAME }}-${{ steps.version.outputs.version }}.zip
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

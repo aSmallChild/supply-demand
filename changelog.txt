@@ -1,2 +1,5 @@
-V1 2026-01-04
-- Initial version
+v2026-01-05 Testing GHA
+- Added GitHub action to automatically set version numbers.
+
+v2026-01-04 Initial release
+- Town and industry growth implemented.
