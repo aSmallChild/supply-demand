@@ -139,6 +139,10 @@ function logIfBehindSchedule(lastRunDate, currentDate) {
     }
 }
 
+function getTownIdFromIndustryId(industryId) {
+    return GSTile.GetClosestTown(GSIndustry.GetLocation(industryId));
+}
+
 function getIndustryStations(industryId) {
     local stationCount = GSIndustry.GetAmountOfStationsAround(industryId);
     if (stationCount < 1) {
@@ -176,10 +180,6 @@ function getIndustryStations(industryId) {
         }
     }
     return sortedList;
-}
-
-function getTownIdFromIndustryId(industryId) {
-    return GSTile.GetClosestTown(GSIndustry.GetLocation(industryId));
 }
 
 /**
@@ -454,7 +454,7 @@ class CargoTracker {
     }
 
     static function track(origin, companyId, cargoId, townId, industryId) {
-        if (industryId) {
+        if (industryId != null) {
             local key = companyId + "_" + cargoId + "_i" + industryId;
             if (key in CargoTracker.trackedCargo) {
                 return CargoTracker.linkOrigin(CargoTracker.trackedCargo[key], origin);
