@@ -1,5 +1,6 @@
-v2026-01-06 bugfix
+v2026-01-06 bugfixes
 - Fix a crash when cargo is shipped from industry 0
+- Fix delivery tracking for refit orders
 
 v2026-01-05 Testing GHA
 - Added GitHub action to automatically set version numbers.

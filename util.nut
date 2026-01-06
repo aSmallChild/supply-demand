@@ -139,6 +139,10 @@ function logIfBehindSchedule(lastRunDate, currentDate) {
     }
 }
 
+function getTownIdFromIndustryId(industryId) {
+    return GSTile.GetClosestTown(GSIndustry.GetLocation(industryId));
+}
+
 function getIndustryStations(industryId) {
     local stationCount = GSIndustry.GetAmountOfStationsAround(industryId);
     if (stationCount < 1) {
@@ -176,10 +180,6 @@ function getIndustryStations(industryId) {
         }
     }
     return sortedList;
-}
-
-function getTownIdFromIndustryId(industryId) {
-    return GSTile.GetClosestTown(GSIndustry.GetLocation(industryId));
 }
 
 /**

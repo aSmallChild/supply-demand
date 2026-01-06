@@ -11,15 +11,14 @@ E.g. For Oil to be tracked the refinery has to be supplying goods to a town.
 
 ## To do
 
-- [x] if monthly average supply is not sufficient for constant growth boost production of suppliers
-- [ ] ~~track some stats~~
-    - [ ] ~~display stats in game menus (industry window, station window)~~
-    - [ ] ~~can the game do graphs?~~
 - [ ] script settings
   - [ ] tiers of towns
   - [ ] run interval
 - [ ] only process shared orders once
-- [ ] delivery tracking works if orders contain a refit at a station
+- [ ] fix symmetric delivery tracking e.g. valuables to valuables
+- [ ] fix issue where intermediate cargo types are unfulfillable (steel)
+- [ ] tidy up town messages, list cargo types that are tracked even if 0 are delivered
+- [ ] include complete list of destinations on the industry text & set industry text even if it hasn't experienced growth
 
 ## Creating a Release
 
