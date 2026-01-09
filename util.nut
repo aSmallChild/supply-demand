@@ -641,7 +641,7 @@ function analyzeTownCargo(townData) {
         analysis.categoryReceived[category][cargoId] += amount;
         analysis.categoryTotals[category] += amount;
         foreach (origin in trackedCargo.origins) {
-            if (origin.industryId) {
+            if (origin.industryId != null) {
                 analysis.originIndustryIds[cargoId][origin.industryId] <- true;
             }
         }
@@ -813,7 +813,7 @@ function increaseSupply(townData, analysis, cargoId, monthsSinceFirstDelivery) {
         }
     }
 
-    if (!bestIndustry) {
+    if (bestIndustry == null) {
         return;
     }
 

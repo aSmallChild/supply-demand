@@ -14,9 +14,8 @@ E.g. For Oil to be tracked the refinery has to be supplying goods to a town.
 - [ ] script settings
   - [ ] tiers of towns
   - [ ] run interval
-- [ ] only process shared orders once
 - [ ] fix symmetric delivery tracking e.g. valuables to valuables
-- [ ] fix issue where intermediate cargo types are unfulfillable (steel)
+- [ ] only process shared orders once
 - [ ] tidy up town messages, list cargo types that are tracked even if 0 are delivered
 - [ ] include complete list of destinations on the industry text & set industry text even if it hasn't experienced growth
 

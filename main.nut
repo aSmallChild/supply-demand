@@ -3,41 +3,52 @@ require("cargo.nut");
 
 class SupplyDemand extends GSController {
     static runIntervalMonths = 3;
+    lastRunDate = null;
     nextRunDate = null;
     constructor() {
     }
 }
 
 function SupplyDemand::Start() {
-    local lastRunDate = GSDate.GetCurrentDate();
-    GSLog.Info("Script started, game date: " + formatDate(lastRunDate));
+    this.lastRunDate = GSDate.GetCurrentDate();
+    GSLog.Info("Script started, game date: " + formatDate(this.lastRunDate));
     categorizeAllCargoTypes();
 
     if (!this.nextRunDate) {
-        this.nextRunDate = getStartOfNextMonth(lastRunDate, SupplyDemand.runIntervalMonths);
+        this.nextRunDate = getStartOfNextMonth(this.lastRunDate, SupplyDemand.runIntervalMonths);
     }
     while (true) {
         if (GSGame.IsPaused()) {
+            nap();
             continue;
         }
         local currentDate = GSDate.GetCurrentDate();
         if (this.nextRunDate > currentDate) {
-            this.Sleep(74 * 3) // 3 days
+            nap();
             continue;
         }
-        lastRunDate = this.nextRunDate;
-        this.nextRunDate = getStartOfNextMonth(this.nextRunDate, SupplyDemand.runIntervalMonths);
-        GSLog.Info("");
-        GSLog.Info("Month: " + formatDate(lastRunDate) + ". Started processing on " + formatDate(currentDate));
-        logIfBehindSchedule(lastRunDate, currentDate);
-
-        local origins = findOrigins(currentDate);
-        trackDeliveries(origins);
-        CargoTracker.update(lastRunDate);
-        CargoTracker.processTowns();
-
-        GSLog.Info("Month: " + formatDate(lastRunDate) + " finished processing on " + formatDate(GSDate.GetCurrentDate()));
+        this.mainLoop(currentDate);
+        nap();
     }
+}
+
+function nap() {
+    this.Sleep(74 * 3) // 3 days
+}
+
+function SupplyDemand::mainLoop(currentDate) {
+    this.lastRunDate = this.nextRunDate;
+    this.nextRunDate = getStartOfNextMonth(this.nextRunDate, SupplyDemand.runIntervalMonths);
+    GSLog.Info("");
+    GSLog.Info("Month: " + formatDate(lastRunDate) + ". Started processing on " + formatDate(currentDate));
+    logIfBehindSchedule(lastRunDate, currentDate);
+
+    local origins = findOrigins(currentDate);
+    trackDeliveries(origins);
+    CargoTracker.update(lastRunDate);
+    CargoTracker.processTowns();
+
+    GSLog.Info("Month: " + formatDate(lastRunDate) + " finished processing on " + formatDate(GSDate.GetCurrentDate()));
 }
 
 function trackDeliveries(origins) {
