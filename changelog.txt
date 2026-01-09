@@ -1,4 +1,4 @@
-v2026-01-09 bugfixes
+v2026-01-10 bugfixes
 - Ignore intermediate cargo types (like steel) in scoring so all categories can be fulfilled.
 - Fix more bugs when using industry 0
 
