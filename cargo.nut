@@ -8,7 +8,8 @@ class CargoCategory {
     ESSENTIAL = "ESSENTIAL";
     SERVICE = "SERVICE";
     INDUSTRIAL = "INDUSTRIAL";
-    order = [
+    INTERMEDIATE = "INTERMEDIATE";
+    scoreOrder = [
         "ESSENTIAL",
         "SERVICE",
         "INDUSTRIAL",
@@ -18,13 +19,12 @@ class CargoCategory {
     townCargoTypes = {};
 
     static function getTotalCategories() {
-        return CargoCategory.order.len();
+        return CargoCategory.scoreOrder.len();
     }
 }
 
 function categorizeAllCargoTypes() {
-    local cargoList = GSCargoList();
-    foreach (cargoId, _ in cargoList) {
+    foreach (cargoId, _ in GSCargoList()) {
         local townEffect = GSCargo.GetTownEffect(cargoId);
         local category = getActualCargoCategory(cargoId, townEffect);
         CargoCategory.map[cargoId] <- category;
@@ -45,11 +45,45 @@ function getActualCargoCategory(cargoId, townEffect) {
         return CargoCategory.ESSENTIAL;
     }
 
-    if (isTownCargo(townEffect) || GSCargo.GetDistributionType(cargoId) == GSCargo.DT_SYMMETRIC) {
+    if (isTownCargo(townEffect) || GSCargo.HasCargoClass(cargoId, GSCargo.CC_ARMOURED)) {
         return CargoCategory.SERVICE;
     }
 
-    return CargoCategory.INDUSTRIAL;
+    if (isRawCargo(cargoId)) {
+        return CargoCategory.INDUSTRIAL;
+    }
+
+    return CargoCategory.INTERMEDIATE;
+}
+
+function isRawCargo(cargoId) {
+    foreach (industryTypeId, _ in getProducingIndustryTypes(cargoId)) {
+        if (GSIndustryType.IsProcessingIndustry(industryTypeId)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function getProducingIndustryTypes(cargoId) {
+    local types = GSIndustryTypeList();
+    foreach (industryTypeId, _ in GSIndustryTypeList()) {
+        local isProduced = false;
+        foreach (producedCargoId, _ in GSIndustryType.GetProducedCargo(industryTypeId)) {
+            if (producedCargoId == cargoId) {
+                isProduced = true;
+                break;
+            }
+        }
+        if (!isProduced) {
+            types.RemoveItem(industryTypeId);
+        }
+    }
+    return types;
+}
+
+function isScoredCargo(cargoId) {
+    return listContains(CargoCategory.scoreOrder, getCargoCategory(cargoId));
 }
 
 function isTownCargo(townEffect) {
