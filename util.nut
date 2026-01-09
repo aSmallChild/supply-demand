@@ -661,7 +661,7 @@ function analyzeTownCargo(townData) {
         analysis.companyCargoTotals[companyId][cargoId] += amount;
     }
 
-    foreach (category in CargoCategory.order) {
+    foreach (category in CargoCategory.scoreOrder) {
         local score = {
             totalCargo = 0,
             totalCargos = CargoCategory.sets[category].len(),
@@ -670,7 +670,7 @@ function analyzeTownCargo(townData) {
         analysis.categoryScores[category] <- score;
     }
 
-    foreach (category in CargoCategory.order) {
+    foreach (category in CargoCategory.scoreOrder) {
         local score = analysis.categoryScores[category];
         foreach (cargoId, _ in CargoCategory.sets[category]) {
             if (!(cargoId in analysis.cargoTotals) || !analysis.cargoTotals[cargoId]) {
@@ -694,11 +694,13 @@ function analyzeTownCargo(townData) {
     return analysis;
 }
 
-function setFulfilledOriginCargoTypes(analysis, cargoId) {
-    foreach (industryId, _ in analysis.originIndustryIds[cargoId]) {
-        foreach (cargoId, _ in GSCargoList_IndustryProducing(industryId)) {
-            local category = getCargoCategory(cargoId);
-            addUnique(analysis.categoryScores[category].fulfilledCargoIds, cargoId);
+function setFulfilledOriginCargoTypes(analysis, finalCargoId) {
+    foreach (industryId, _ in analysis.originIndustryIds[finalCargoId]) {
+        foreach (originCargoId, _ in GSCargoList_IndustryProducing(industryId)) {
+            local category = getCargoCategory(originCargoId);
+            if  (isScoredCargo(originCargoId)) {
+                addUnique(analysis.categoryScores[category].fulfilledCargoIds, originCargoId);
+            }
         }
     }
 }
@@ -716,7 +718,6 @@ function processTown(townData) {
         fulfilledCargoTypes = 0,
     };
 
-    local essential = analysis.categoryScores[CargoCategory.ESSENTIAL];
     local fulfilledCategories = [];
     foreach (category in analysis.categoryScores) {
         growthSnapshot.fulfilledCargoTypes += category.fulfilledCargoIds.len();
@@ -726,6 +727,7 @@ function processTown(townData) {
         }
     }
 
+    local essential = analysis.categoryScores[CargoCategory.ESSENTIAL];
     if (demand.categories < 1) {
         growTierZeroTown(growthSnapshot, analysis, townData, fulfilledCategories);
     }
@@ -855,7 +857,7 @@ function buildGrowthMessage(growthSnapshot, analysis, townData, fulfilledCategor
     message.AddParam(analysis.demand.target);
     message.AddParam(growthSnapshot.numberOfNewHouses + "/" + analysis.demand.maxGrowth);
 
-    foreach (category in CargoCategory.order) {
+    foreach (category in CargoCategory.scoreOrder) {
         local score = analysis.categoryScores[category];
         local categoryLine = GSText(GSText["STR_TOWN_" + category + "_LINE"]);
         categoryLine.AddParam(score.totalCargo);

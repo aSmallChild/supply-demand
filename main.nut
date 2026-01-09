@@ -17,12 +17,12 @@ function SupplyDemand::Start() {
         this.nextRunDate = getStartOfNextMonth(lastRunDate, SupplyDemand.runIntervalMonths);
     }
     while (true) {
-        this.Sleep(74 * 3) // 3 days
         if (GSGame.IsPaused()) {
             continue;
         }
         local currentDate = GSDate.GetCurrentDate();
         if (this.nextRunDate > currentDate) {
+            this.Sleep(74 * 3) // 3 days
             continue;
         }
         lastRunDate = this.nextRunDate;
